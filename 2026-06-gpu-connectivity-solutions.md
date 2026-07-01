@@ -1,0 +1,11 @@
+- | Feature / Dimension | NVLink (Nvidia) | Compute Express Link (CXL) | InfiniBand (Quantum) | AI-Optimized Ethernet (Spectrum-X)|
+  |---|---|---|---|---|
+  | **Topology Focus** | Scale-Up (Intra-node) | Scale-Out / Disaggregation | Scale-Out (Inter-node) | Scale-Out (Inter-node / Cloud) |
+  | **Primary Goal** | Unified memory and compute across local GPUs. | Cache-coherent memory pooling and expansion. | Zero-packet-loss, maximum throughput cluster networking. | High-performance networking on standard cloud infrastructure. |
+  | **Physical Medium** | PCB traces, specialized copper NVLink cables. | PCIe slots/traces, future optical/copper fabrics. | Optical fiber, Direct Attach Copper (DAC). | Optical fiber, Direct Attach Copper (DAC). |
+  | **Underlying Protocol** | Proprietary NVLink routing. | PCIe physical layer (CXL.io, .mem, .cache). | InfiniBand (native RDMA). | RoCE v2 (RDMA over Converged Ethernet) with adaptive routing. |
+  | **Inventor / Backer** | Nvidia. | Intel (originally), now CXL Consortium (Open). | InfiniBand Trade Association (Dominated by Nvidia/Mellanox). | IEEE (Standard), Nvidia (Spectrum-X optimization). |
+  | **Ecosystem Openness** | Closed / Vendor-locked. | Open / Industry-wide. | Standardized, but highly concentrated vendor supply. | Open Standard / Broad vendor ecosystem (Broadcom, Cisco, Arista). |
+  | **Latency Profile** | Nanoseconds. | Sub-microsecond. | Microseconds (Extremely low jitter). | Microseconds (Slightly higher jitter than InfiniBand). |
+  | **Current Peak Bandwidth** | 1.8 TB/s bidirectional per GPU (Blackwell / 5th Gen). | ~64 GB/s (PCIe Gen 5 x16 slot). | 800 Gb/s per port (Quantum-X800). | 800 Gb/s per port (Spectrum-X800). |
+  | **Typical Use Cases** | Interconnecting 8 GPUs on a single baseboard for frontier model training. | Expanding server DRAM capacity; vendor-agnostic accelerator attachment. | Dedicated, monolithic AI supercomputers; bare-metal HPC. | Multi-tenant cloud AI infrastructure; enterprise AI data centers. |

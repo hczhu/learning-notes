@@ -1,0 +1,14 @@
+## Finetune an LM using self-annotated text
+- ### Ask LM to annotate training text with API calls as augmented text
+	- The prompt: Your task is to add calls to a Question Answering API to a piece of text. The questions should help you get information required to complete the text. You can call the API by writing "[QA(question)]" where "question" is the question you want to ask. Here are some examples of API calls:
+		- Input: Joe Biden was born in Scranton, Pennsylvania.
+		- Output: Joe Biden was born in [QA("Where was Joe Biden born?")] Scranton, [QA("In which state is Scranton?")] Pennsylvania.
+		- Input: Coca-Cola, or Coke, is a carbonated soft drink manufactured by the Coca-Cola Company
+		- Output: Coca-Cola, or [QA("What other name is Coca-Cola known by?")] Coke, is a carbonated soft drink manufactured by [QA("Who manufactures Coca-Cola?")] the Coca-Cola Company
+- ### Finetuning
+	- We use this new dataset to finetune M, using a standard language modeling objective.
+	- Crucially, apart from inserted API calls the augmented dataset C∗ contains the exact same texts as C, the original dataset. As a consequence, finetuning M on C∗ exposes it to the same content as finetuning on C. Moreover, as API calls are inserted in exactly those positions and with exactly those inputs that help M predict future tokens, finetuning on C* enables the language model to decide when and how to use which tool, based purely on its own feedback.
+- ### Inference
+- When generating text with M after finetuning with our approach, we perform regular decoding until M produces the “→” token, indicating that it next expects the response for an API call. At this point, we interrupt the decoding process, call the appropriate API to get a response, and continue the decoding process after inserting both the response and the  token.
+- ![image.png](../assets/image_1777435944951_0.png)
+-

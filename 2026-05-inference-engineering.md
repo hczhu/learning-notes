@@ -1,0 +1,107 @@
+## 3 layers
+- **Runtime**: Optimizing the performance of a single model on a single GPU-backed instance.
+- **Infrastructure**: Scaling across clusters, regions, and clouds without creating silos while maintaining excellent uptime.
+- **Tooling**: Providing engineers working on inference with the right level of abstraction to balance control with productivity.
+- ## Model requirements: Which model(s) do you need to on?
+- **Application interface**: How will inputs be delivered to the model, and how is the output expected to be formatted?
+- **Latency budget**: End-to-end, how fast does your product need to respond to a user action?
+- **Unit economics**: What does it make sense to spend on a per-request, per-user, or per-month basis?
+- **Usage patterns**: How many concurrent users are you serving, and is there any pattern to their usage (e.g., more activity during business hours)?
+- ## Fine-tuning vs. Distilling
+	- Unlike fine-tuning on synthetic data, where the model is trained on input-output pairs, distillation shows the student model the teacher model’s actual probability distributions, not just its fi nal answers. Where ne-tuning teaches a model to perform better in a specific domain, distillation teaches the model how to emulate the behavior – good and bad – of a larger model. Distillation sees substantially less real-world use than fine-tuning.
+- ## MoE
+- ![image.png](../assets/image_1775865732364_0.png)
+- ## Alternative arch than transformers
+- Mamba is a selective state-space model that replaces self-attention with a recurrent state update, achieving linear scaling on sequence length.
+- Hybrid models sometimes mix Mamba-style state-space model blocks with transformer blocks.
+- Applications of state-space models are still limited, though hybrid models are becoming more popular, with open models like NVIDIA Nemotron 3 Nano adopting hybrid architectures.
+- ## GPUs
+- In GPUs, cores have a different meaning.
+	- GPUs have Streaming Multiprocessors (SMs), and each SM contains multiple cores.
+	- There are three types of compute in GPUs:
+		- CUDA Core: Operates on individual numbers (scalars).
+		- Tensor Core: Operates on vectors and matrices.
+		- Special Function Unit (SFU): Accelerates certain mathematical operations like sin, cos, and log.
+- Compute is measured in FLOPS (floating point operations per second)
+	- Spec sheets usually show two measurements for Tensor Core compute:
+		- Dense: The raw floating point operations per second if every element of the tensor is used.
+		- Sparse: In tensors with 2:4 structured sparsity, where 50 percent of the values are 0, Tensor Cores can skip multiplication by 0.
+- FLOPS generally double with each halving of precision. A GPU capable of one petaFLOPS on 16-bit numbers will be able to do two petaFLOPS on 8-bit numbers.
+- GPUs also feature on-chip SRAM in the form of caches. GPUs have three levels of cache:
+	- L0: Instruction cache for a single Tensor Core.
+	- L1: Shared memory per Streaming Multiprocessor.
+	- L2: Global cache across Streaming Multiprocessors.
+- Vera Rubin GPU
+	- Rubin also introduces the new CPX, a separate chip that’s built for compute-bound tasks like LLM prefi ll. The CPX will be part of NVIDIA’s rack-scale systems for high-volume inference.
+- NVLink among GPUs on the same node, Intra-node
+	- **NVLink**: A one-to-one communication layer between GPUs, up to 1800 GB/s on Blackwell and 900 GB/s on Hopper.
+	- **NVSwitch**: An all-to-all communication layer on top of NVLink for coor- dination among all GPUs in a node.
+- Inter-node connections
+	- The standard in node-to-node interconnect for NVIDIA GPUs is InfiniBand. InfiniBand competes with networking technologies like Ethernet
+- ## CUDA
+- **CUDA kernel**: A user-defined function that executes parallelized code on the GPU.
+	- kernel implementations are closely tied to specific hardware details. Kernels often have hard-coded values based on the memory bandwidth or the number or layout of Tensor Cores on a given GPU.
+	- most production-ready GEMM kernels come from cuBLAS. But when the DeepSeek lab released their updated version of DeepSeek-V3, they also released DeepGEMM, which provides more efficient GEMM kernels for running matrix multiplication in FP8 on the Hopper GPU architecture.
+- **CUDA graph**: A directed acyclic graph (DAG) of kernels and other GPU operations for optimizing repeated workflows.
+- **CUDA driver**: A low-level interface between the application and the GPU hardware to manage memory and execution.
+- **CUDA runtime**: A developer-facing API for launching kernels and managing memory.
+- **CUTLASS** is a template library that provides building blocks for writing high-performance kernels. For example, FlashAttention 3 uses CUTLASS. CuTe, another template library, introduces abstractions for tiled tensor operations for recent architectures.
+- ## Inference Engines
+- ![image.png](../assets/image_1777945538315_0.png)
+- ### vLLM
+	- vLLM also supports multimodal inference via vLLM Omni, which extends the engine to support image, audio, and video inputs and outputs.
+- ### SGLang
+	- SGLang’s unique angle on the problem of model serving is expressed in its developer experience, which pairs a fast backend runtime with a fl exible frontend language. In practice, that means you can choose individual components of your engine for deep customization without needing to rewrite everything else from scratch
+	- SGLang has invested heavily in supporting large-scale deployments of MoE LLMs, specifi cally multi-node deployments on systems like GB200 NVL72 for high throughput.
+	- SGLang also supports image and video generation model inference via SGLang Diffusion.
+- ### TensorRT-LLM
+	- TensorRT-LLM is NVIDIA’s open-source inference engine. Of the three main options, TensorRT-LLM offers the highest performance and the most flexibility to expert users
+	- TensorRT-LLM achieves the best performance in large part because it has access to kernels written by NVIDIA engineers, including some closed-source kernels.
+- ## NVIDIA Dynamo
+- A distributed system for model serving with features
+	- **KV cache re-use**: Retaining KV information between requests and routing requests based on prefix match.
+	- **Disaggregation**: Separating prefill and decode onto individually optimized engines with independent scaling.
+	- **Multi-node parallelism**: Optionally using two or more nodes of GPUs in a single replica for a model, usually with Expert Parallelism.
+- ## PyTorch
+- The step that transforms a model from training to inference is compilation. PyTorch compilation (torch.compile) targets a specific GPU and performs automatic kernel selection and kernel fusion to ensure optimal performance.
+- torch.compile can’t fuse plugin kernels like DeepGEMM, FlashAttention, or custom kernels. This limits its utility for LLM inference, where most kernels are custom.
+- ## Model deployment
+- it’s increasingly popular to skip directly from PyTorch to an inference engine like vLLM or TensorRT-LLM for models that these engines support, bypassing the intermediate representation step and exporting weights only as safetensors.
+- ## Draft models for speculative decoding
+- **EAGLE** offers an alternative: a purpose-built draft model trained from scratch to generate sequences of up to eight draft tokens (two times more than Medusa) with a very high acceptance rate. During inference, LLMs accumulate a lot of context about the predicted tokens in the form of hidden states between layers. Traditional draft models don’t have access to this information. EAGLE is a draft model trained to accept hidden states as input and generate speculative tokens as output
+- **N-gram speculation** - the acceptance rate for n-grams is only high when the contents of the model output are similar to the model input. N-gram speculation is mostly used for code completion and code revision, where syntax is predictable and output closely matches input. Two ways to generate n-gram dictionary
+	- From the input of a inference request
+	- From training data??
+	- Cache the outputs of all inference requests as n-grams
+- ## KV cache; prefix cache;
+	- Tools like CacheBlend and LMCache support non-prefix sequences, expanding the possibilities for KV cache re-use
+- ## Attention algorithms
+- **FlashAttention**: A series of optimized attention kernels to compute attention with reduced numbers of reads from and writes to memory.
+- **PagedAttention**: A memory management technique that stores KV cache in fixed-size pages, reducing fragmentation and duplication.
+- **Chunked Prefill**: A strategy of splitting large input sequences into chunks, which can be run alongside decode as resources allow to avoid overwhelming the inference engine with a long sequence
+- ## Distributed inference
+- **Pipeline Parallelism (PP)**: Splits the layers of the model across GPUs
+- **Tensor Parallelism (TP)**: Splits the tensors within each layer across GPUs
+- **Expert Parallelism (EP)**: Shards entire experts from MoE models across different GPUs.
+- ![image.png](../assets/image_1777970682056_0.png)
+- ## Disaggregated serving
+- 1. The prefill engine takes the input sequence and generates a KV cache while computing the first token unless the prompt is already in the global KV cache
+- 2. The prefill engine sends the KV cache over the hardware interconnect to the decode engine
+- 3. The decode engine computes all subsequent tokens
+- ## Dynamo's support for disaggregation
+- A prefill queue to hold requests when all prefill engines are saturated
+- Robust support for conditional disaggregation, with prefill routing based on configurable thresholds for ISL after prefix cache and prefill queue
+  size
+- Efficient NIXL-based KV transfer from prefill to decode engines with a kernel to transpose KV blocks between layouts when the engines have different TP configurations
+- The number of prefill and decode engines is written as **xPyD**, for example, 5P3D means five prefill and three decode engines working together to serve a single model deployment.
+- ## Production
+- NVIDIA Inference Microservices (NIMs) are pre-built Docker containers for popular open models.
+- Cloud GPUs can be procured via three different mechanisms:
+	- **Reserved**: Blocks of hundreds or thousands of GPUs are reserved for months or years at discounted rates.
+	- **On-demand**: Individual instances are available as needed up to a given quota for a relatively high per-hour cost.
+	- **Spot**: Discounted on-demand instances that can be pre-empted at an agreed-upon notice period, often minutes.
+- ## Further reading
+- **AI Engineering: Building Applications with Foundation Models** by Chip Huyen (O’Reilly Media, 2025): This incredibly popular book introduces
+  the full breadth of AI engineering topics.
+- **Build a Large Language Model (From Scratch)** by Sebastian Raschka (Manning, 2024): This hands-on book provides a detailed look at LLM architecture.
+- **AI Systems Performance Engineering: Optimizing Model Training and Inference Workloads with GPUs, CUDA, and PyTorch** by Chris Fregly (O’Reilly Media, 2025): This brand-new book focuses on building for performance.
