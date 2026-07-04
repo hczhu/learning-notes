@@ -1,0 +1,107 @@
+## Passing on Passwords - Passkeys
+- Source
+	- David Geer, "Passing on Passwords", Communications of the ACM, May 2026
+	- DOI: 10.1145/3789691
+	- Source used: local PDF `passkey.pdf`
+	- No external sources used.
+- Core idea
+	- Passkeys are a passwordless login mechanism based on public key cryptography.
+	- Instead of typing a memorized alphanumeric password, the user's device verifies identity and presence using a private key.
+	- The cybersecurity motivation is to remove credentials that attackers can phish, guess, reuse, or abuse across accounts.
+-
+- ## How the passkey works with technical details from the article
+	- Passkeys are based on the FIDO2 standard from the FIDO Alliance.
+		- FIDO2 combines:
+			- **WebAuthn**: a Web protocol that lets browsers or apps use passkeys so users can log in to websites without passwords.
+			- **CTAP2**: Client to Authenticator Protocol, which lets user devices communicate securely with authenticators such as phones, hardware tokens, or wearables.
+		- CTAP2 communication can happen through **USB**, **NFC**, or **Bluetooth**.
+		- The FIDO Alliance and W3C developed these protocols.
+	- Public/private key model
+		- The user's **private key** is stored on the user's own device or with a trusted provider such as Apple, Google, or Microsoft.
+		- The account service receives only the **public key**.
+		- During login, the service can verify that the user controls the matching private key without receiving a reusable password.
+		- This is why passkeys reduce phishing and credential reuse: the reusable secret is not typed into websites.
+	- Origin binding
+		- Origin binding locks each credential to the website domain and the physical device that created it.
+		- This prevents a credential from being reused on a different website or hardware target.
+		- The article frames origin binding as one of the technical properties that makes passkeys harder to phish than passwords.
+	- Device-bound passkeys
+		- Device-bound passkeys can live on:
+			- Smartphones
+			- Security chips
+			- Physical keys such as a **YubiKey** or **Hideez Key**
+		- Security chips mentioned in the article:
+			- **TPM**, or Trusted Platform Module: a chip inside computers that protects stored data and verifies hardware integrity.
+			- **Apple Secure Enclave**: a secure part of Apple devices that keeps passwords and biometric information private.
+			- **Google Titan M**: a Pixel security chip that protects login data and sensitive operations.
+			- Chips inside **YubiKeys** and similar hardware authenticators.
+		- **YubiKey** is described as a small device that verifies identity for computers, networks, and online accounts.
+			- It supports passwordless access and multiple authentication methods through a tap or plug-in.
+		- **Hideez Key** is described as a FIDO2 device and password manager that supports one-time passwords and can serve as an RFID card with proximity-based PC lock/unlock.
+	- Synced passkeys
+		- Apple and Google have introduced synced passkeys.
+		- Synced passkeys are stored in the cloud and synchronized between devices in the same ecosystem.
+		- **Apple passkeys**
+			- Sync across Apple devices signed into the same Apple ID.
+			- Integrate with **Face ID** and **Touch ID** for authentication.
+			- Are managed by **iCloud Keychain**, which stores and syncs them in the cloud across Apple devices.
+		- **Google passkeys**
+			- Sync across devices where the user is signed in to **Chrome** with a Google Account.
+			- Are managed by **Google Password Manager**.
+			- Are accessible on non-Google devices through **Chrome**, giving Google a browser distribution channel for passkeys.
+		- **Microsoft passkeys**
+			- Are integrated with **Windows Hello** and Microsoft devices.
+			- Are the default login method for new Microsoft accounts, according to the article.
+		- User benefit of syncing
+			- If a user registers on one device, such as a phone, they can later log in from a laptop or tablet without setting up the passkey again.
+	- What passkeys do and do not solve
+		- Passkeys replace passwords as an authentication factor.
+		- They make sign-in more secure, especially against phishing, credential reuse, and data breaches.
+		- They do not secure everything that happens after login.
+		- The article specifically says passkeys do not stop:
+			- **Session hijacking**, because that happens after a user is already logged in and the session is active.
+			- **Malware**, which still requires broader security hygiene.
+		- Strong digital hygiene still matters:
+			- People should keep software updated and avoid suspicious links.
+			- Organizations need security policies, employee training, access controls, and backups.
+-
+- ## Why it is difficult to replace passwords by passkeys
+	- Password fallback can preserve the weakest link.
+		- Organizations rolling out passkeys may still need password fallback so users can recover access if they lose keys or devices.
+		- If the password still exists for account recovery or service access, it remains stealable and phishable.
+		- This problem applies to both hardware-bound and synced passkeys.
+	- User familiarity favors passwords.
+		- Passwords remain the default access technology for private accounts.
+		- Users have years of daily experience with passwords.
+		- Some users may resist changing to passkeys.
+		- Less technical users may not understand how passkeys work, which can reduce adoption interest.
+	- Migration requires major investment.
+		- A complete shift from passwords to passkeys requires major investment from leading technology firms and businesses.
+		- The article cites implementation costs for modern passwordless solutions of about **USD 100,000 to USD 300,000** for integration, user migration, and system configuration.
+		- For many businesses, the infrastructure cost can outweigh perceived benefits.
+	- 2FA plus passwords is familiar but still weak.
+		- Password plus 2FA usually means the user signs in with a password and confirms identity with a second independent factor.
+		- Common alternatives to passkeys include one-time passcodes delivered by SMS or email, or generated by an authenticator app.
+		- These methods are familiar but add friction and create opportunities for phishing or interception.
+		- The article frames password + 2FA more as a hazard than a true long-term substitute for passkeys.
+	- Legacy applications and protocols are not FIDO-compatible.
+		- Enterprises and government agencies have older environments where passkeys are difficult to implement.
+		- Difficult targets include:
+			- Datacenter servers
+			- Mainframe computers
+			- Networking infrastructure
+		- Legacy protocols mentioned in the article:
+			- **LDAP**, used to access and manage centralized directory information such as enterprise user accounts.
+			- **RADIUS**, used to authenticate and authorize access to VPNs, Wi-Fi, remote servers, and other network resources.
+			- Basic authentication for email protocols such as **POP3**, **IMAP**, and **SMTP**, which rely on username/password logins.
+	- Microsoft infrastructure still has password assumptions.
+		- Microsoft supports passkeys, but much of its domain technology assumes a password underneath.
+		- Even in Microsoft environments that use passkeys, passwords can still exist and be required in edge cases.
+		- Examples from the article:
+			- Microsoft admin tools
+			- Remote desktops
+			- Older applications that do not support passkeys
+	- Passkeys are not a complete cybersecurity replacement.
+		- They solve the login credential problem, not every post-login security problem.
+		- Organizations still need broader defenses for session hijacking, malware, access governance, training, and backups.
+		- This makes passkeys a major authentication improvement, but not a standalone replacement for security architecture.
