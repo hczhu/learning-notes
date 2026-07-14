@@ -10,8 +10,9 @@ there is no code, build, lint, or test step. Each file is a self-contained note
 summarizing something the owner is learning (a paper, an article, a technical
 concept, hands-on exploration).
 
-The repo is cloned as a child directory of the `tony-stock` workspace but is its
-own independent Git repo (`git@github.com:hczhu/learning-notes.git`).
+The repo is cloned as a child directory of the `Logseq-github` vault but is its
+own independent Git repo (`git@github.com:hczhu/learning-notes.git`), gitignored
+by the parent.
 
 ## File Naming Convention
 
@@ -47,6 +48,28 @@ Conventions seen across existing notes:
 - **Image embeds**: `![alt](../assets/<file>)` or external URLs. Note that
   `../assets/` points at the Logseq vault's shared assets folder, which lives
   **outside** this repo — those image paths may not resolve from a bare clone.
+
+## GitHub + Logseq Dual Rendering
+
+Notes must render correctly **both** in Logseq (outliner) and on GitHub
+(CommonMark/GFM). GitHub treats tab-indented lines that are not nested under a
+list item as **indented code blocks** (monospace boxes) — the most common way an
+outline file breaks on GitHub.
+
+1. **Headings must be bullets**: write `- ## Section Title`, never a bare
+   `## Section Title` followed by tab-indented children — the children render as
+   a code block on GitHub.
+2. **Only tab-indent under a parent bullet** — one tab per nesting level; no
+   free-standing tab-indented text.
+3. **Tables hang off a bullet**: start the table on the bullet line
+   (`- | Col | Col |`) and indent subsequent rows with the same tabs plus two
+   spaces so the `|` characters align vertically. A table on bare tab-indented
+   lines (no bullet) becomes a code block on GitHub.
+4. **Currency dollar signs**: escape as `\$` when two or more `$<digit>`
+   patterns appear on one line — paired `$...$` renders as inline math and
+   garbles the text. (`$inline$` used *intentionally* for LaTeX is fine.)
+5. After merging, spot-check the rendered note on GitHub when it contains new
+   tables or deep nesting.
 
 ## Content Themes
 
