@@ -1,0 +1,16 @@
+- **Source**: Nassim Nicholas Taleb, *Fooled by Randomness: The Hidden Role of Chance in Life and in the Markets* (first published 2001).
+
+- ## Example Mistakes Related to Probabilities
+	- ### Ignoring known evidence in the O. J. Simpson argument
+		- A defense lawyer argued that only about **10% of men who batter their wives go on to murder them**, suggesting that prior domestic violence was weak evidence of murder.
+		- **The mistake**: this answers the wrong conditional-probability question. Let:
+			- $B$ = the husband battered his wife.
+			- $G$ = the husband is guilty of murdering his wife.
+			- $M$ = the wife was murdered.
+		- The lawyer emphasized $P(G \mid B)$: among all battered women, how often does the batterer murder his wife?
+		- But the wife was already known to have been murdered. The relevant comparison is $P(G \mid B, M)$: among women who were both battered and murdered, how often was the batterer the murderer?
+		- **Why the answer changes**:
+			- The first denominator contains all battered women, most of whom are not murdered, making murder by the batterer appear rare.
+			- The second denominator contains only battered women who were murdered. Taleb cites a much higher figure—about **50%**—for the batterer being the killer within this narrower group.
+		- **Lesson**: condition on all material evidence already known. A low probability before learning that an event occurred can become much higher after that event is included in the conditioning set.
+		- This correction does not itself prove guilt; it only shows why the 10% statistic is not the probability relevant to the jury.
