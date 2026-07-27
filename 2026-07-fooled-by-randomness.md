@@ -1,5 +1,11 @@
 - **Source**: Nassim Nicholas Taleb, *Fooled by Randomness: The Hidden Role of Chance in Life and in the Markets* (first published 2001).
-
+- ## Kelly Criterion
+	- A stock has a probability $p$ of rising by $100b$% and a probability $q = 1-p$ of falling by $100a$%. What percentage of your capital should you invest in the stock?
+	- Define
+		- $odds := b/a$
+		- $edge := expected\_return := pb - qa$
+	- The optimal betting proportion is **$edge / (ab)$**
+	- When $a=1$, i.e. the downside is to lose all your bed, the optimal betting proportion is **$edge / odds$**
 - ## Example Mistakes Related to Probabilities
 	- ### Ignoring known evidence in the O. J. Simpson argument
 		- A defense lawyer argued that only about **10% of men who batter their wives go on to murder them**, suggesting that prior domestic violence was weak evidence of murder.
