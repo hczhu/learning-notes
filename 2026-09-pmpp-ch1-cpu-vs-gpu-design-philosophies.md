@@ -1,5 +1,5 @@
-- **Source**: *Programming Massively Parallel Processors*, Chapter 1 "Introduction" (§1.1 Heterogeneous parallel computing, pp. 1–6) and Chapter 5 (§5.2 CUDA memory types, plus the "CPU vs. GPU Register Architecture" sidebar, pp. 98–99). Elsevier, © 2027. DOI [10.1016/B978-0-44-343900-1.00009-3](https://doi.org/10.1016/B978-0-44-343900-1.00009-3). Read from photographed book pages.
-- **One-liner**: The 2003 power wall split the microprocessor into two trajectories that never re-merged — **multi-core** kept optimizing the latency of one thread, **many-thread** kept optimizing the throughput of millions — and the resulting ~100× peak-FLOPS gap is not an accident of engineering skill but the direct consequence of where each design spends its chip area and power budget. The same split resurfaces one level down, in the memory hierarchy and the register file.
+- **Source**: *Programming Massively Parallel Processors*, Chapter 1 "Introduction" (§1.1 Heterogeneous parallel computing, pp. 1–6), Chapter 5 (§5.2 CUDA memory types, plus the "CPU vs. GPU Register Architecture" sidebar, pp. 98–99), and Chapter 20 "Large language models" (§20.4 KV caching and the opening of §20.5 Flash attention, pp. 488–492). Elsevier, © 2027. DOI [10.1016/B978-0-44-343900-1.00009-3](https://doi.org/10.1016/B978-0-44-343900-1.00009-3). Read from photographed book pages.
+- **One-liner**: The 2003 power wall split the microprocessor into two trajectories that never re-merged — **multi-core** kept optimizing the latency of one thread, **many-thread** kept optimizing the throughput of millions — and the resulting ~100× peak-FLOPS gap is not an accident of engineering skill but the direct consequence of where each design spends its chip area and power budget. The same split resurfaces one level down in the memory hierarchy and the register file — and again at the top of the stack, where KV caching turns LLM decoding into a memory-bandwidth problem.
 
 - ## 1. The virtuous cycle, and the wall it hit
 	- Computing has always been **demand-limited, not supply-limited**: applications have consistently wanted more speed and memory than devices could offer. The book's roll-call of insatiable workloads — weather forecast timeliness, accuracy of engineering structural analysis, realism of computer-generated graphics, airline reservations processed per second, fund transfers per second, and (recently) **deep learning**.
@@ -159,7 +159,63 @@
 	- **The causal chain**: GPUs hide latency by switching threads (§7) → switching must therefore be free → every resident thread's registers must stay live on-chip → the register file must be huge → and since occupancy is the latency-hiding budget, registers-per-thread must be **tradeable against thread count** at runtime.
 	- **Occupancy as the programmer's dial**: registers-per-thread and threads-per-SM trade off directly. Spending more registers per thread buys per-thread speed and costs you the parallelism that was hiding your memory latency in the first place.
 
-- ## 12. Takeaways
+- ## 12. KV caching — the redundancy in naive decoding (Ch. 20, §20.4)
+	- **The inefficiency**: implemented straightforwardly, each transformer layer performs **five matrix multiplications per iteration**. Since sequence length $N$ can reach **tens of thousands of tokens or more**, those are very expensive — and each decoding step adds only **one new row** to the input matrix $X$. The question the book poses: *do we really need full matrix multiplications every iteration?* **"The answer is no."**
+	- **What actually changes from iteration $i$ ($N$) to $i+1$ ($N{+}1$)**:
+		- $X$: one new row — the embedding vector of the new token — is appended at the bottom, growing $X$ from $N \times d$ to $(N{+}1) \times d$.
+		- $Q, K, V$: straightforward. Each is $X W_Q$, $X W_K$, $X W_V$, so the new bottom row of each is just a **vector–matrix multiplication** of the new bottom row of $X$ against the corresponding weight matrix. Every earlier row is untouched.
+		- $QK^\top$: the subtle one. The product grows to $(N{+}1) \times (N{+}1)$, but **element $(r,c)$ is unchanged whenever both $r < N$ and $c < N$** — it is an inner product of a row of $Q$ and a row of $K$ that both survived from the previous iteration. Element $(0,0)$, for instance, is the 0th row of $Q$ against the 0th column of $K^\top$: same inputs, same answer.
+	- **The incremental picture** (Fig. 20.5, redrawn):
+	  ```
+	              QK^T at iteration N+1        ((N+1) x (N+1))
+	            c=0 ............. c=N-1    c=N
+	          +-----------------------+   +-----+
+	    r=0   |                       |   |  0  |
+	     .    |   UNCHANGED from the  |   |  0  |   <- new column is ALL ZEROS
+	     .    |   previous iteration  |   |  0  |      (causality masking)
+	    r=N-1 |                       |   |  0  |
+	          +-----------------------+   +-----+
+	    r=N   |   NEW row  =  Q' x K^T              |  <- the only real work
+	          +-------------------------------------+
+	                          the one exception: element (N,N) is nonzero,
+	                          and it is already covered by the new row
+	  ```
+	- **Why the new column is zero**: causality masking. A token must not be influenced by tokens generated *after* it, so the entire new $N$th column is zeroed — **except** the diagonal element $(N,N)$, which is nonzero and already computed as part of the new row. So one vector–matrix multiply, $Q' K^\top$, produces all the genuinely new attention scores.
+	- **Softmax is incremental too.** Softmax applies **per row** of $QK^\top$. Since the new $N$th element of every earlier row is $0$, it **does not dilute any of the probabilities** already computed in that row — so rows $0 \dots N{-}1$ of $\mathrm{softmax}(QK^\top)$, and therefore rows $0 \dots N{-}1$ of $O$, are **identical to the previous iteration**. All that is needed is a vector–matrix multiplication between the **new row of softmax$(QK^\top)$ and the new $V$**.
+	- **The consequence that defines the optimization**: per iteration, an attention sub-layer **receives one new row of $X$** and **delivers one new row of $O$** to the next layer — but the computation still requires the **entire $K$ and $V$**. Meeting that requirement by **memoizing $K$ and $V$** (storing and reusing them) is the **KV cache**.
+	- **What the cache holds** (Fig. 20.6, redrawn):
+	  ```
+	      what is recomputed          what is cached and reused
+	      ------------------          -------------------------
+	         Q'  (1 x d)                 K  (N x d)   rows 0..N-1
+	         K'  (1 x d)  --append-->    V  (N x d)   rows 0..N-1
+	         V'  (1 x d)  --append-->
+	         O'  (1 x d)                 (the KV cache; Q is NOT cached
+	                                      - only the current row is ever needed)
+	  ```
+	- **Naming caveat (the book's footnote)**: "KV" here should not be confused with *key–value* from the key-value-store literature, though the terms are **analogous**. LLM inference produces an output that is a **weighted sum of values ($V$)**, where the weight is proportional to **how close a query ($Q$) and the keys ($K$) are**.
+
+- ## 13. Prefill vs. generation — one model, two hardware regimes
+	- KV caching splits inference into two phases with **opposite performance characters** — and this is where the whole first half of this note pays off:
+	- | | **Summarization / prefill phase** | **Generation (decode) phase** |
+	  |---|---|---|
+	  | **What happens** | All transformer layers compute their initial $K$ and $V$ and **prefill their KV caches** | Each output token is generated from the **last output token** plus the $K,V$ of all previous iterations; new rows $Q', K', V'$ are appended to the cache |
+	  | **Work per pass** | One transformer pass over a **large number of tokens** | One transformer pass **per output token** |
+	  | **Dominant operation** | Several large **matrix–matrix** multiplications (**GEMMs**) | Mostly **vector–matrix** multiplications (**GEMVs**) |
+	  | **Arithmetic intensity** | **High** | **Low** |
+	  | **Bottleneck** | **Compute-bound**; achieves high GPU utilization | **Memory-bandwidth bound**; tends to **under-utilize** GPU compute resources |
+	  | **The book's remedy** | **Flash attention** (§20.5) — cut global-memory traffic between the matmuls and the softmax | **Batching** and **speculative decoding** (§20.6) — raise arithmetic intensity |
+	- **Why "prefill" is the better name**: the summarization phase is so called because the transformer layers *prefill* their KV caches with the initial contents of $K$ and $V$.
+	- **The deep point**: KV caching does not merely make decoding faster — it **changes which hardware resource is the limit**. It removes almost all the FLOPs from decoding and leaves the memory traffic behind, converting a compute problem into a bandwidth problem. Every decode-side optimization after it (batching, speculative decoding) is an attempt to **buy the arithmetic intensity back**.
+	- This lands exactly on §6 and §7 of this note: the GPU is built to spend area on throughput and to tolerate long memory latency by having many threads. A GEMV-dominated decode step gives it neither enough arithmetic to fill the units nor enough parallelism to hide the DRAM latency — the machine ends up limited by the *one* resource (§6's off-chip bandwidth) that its design philosophy deliberately does **not** optimize.
+
+- ## 14. Flash attention, in one paragraph (§20.5)
+	- **The problem being fixed**: implementing attention with a **separate softmax kernel** means **global barriers at kernel boundaries**, plus **several loads/stores of entire matrices to and from global memory**. Those barriers and that global-memory traffic are the major bottleneck.
+	- **The fix**: flash attention **mathematically reformulates** the attention operations within each head so they can be **reordered and fused into a single kernel**, and **reorganized in a tiled manner**, with each thread block working on a horizontal slice.
+	- **What the tiling picture shows** (Fig. 20.8): tiles $Q_i$, $K^\top_j$, $V_j$ staged in **shared memory**; the running statistics $m_i$ (row max) and $D_i$ (row sum) held in **registers**; and a deliberate reuse — *the same shared-memory tile `s_i` holds both $S_i$ and the tile of $P$*. The whole design is §9–§11 of this note applied as a technique: **keep the working set inside the chip boundary and never round-trip through DRAM between stages**.
+	- Note the division of labor: flash attention attacks the **prefill** side; it does nothing for the GEMV problem of decoding.
+
+- ## 15. Takeaways
 	- **Chip history in one line**: frequency scaling (to 2003) → multi-core (parallelism the programmer must expose) → heterogeneous multi-core + many-thread (parallelism at two very different granularities on the same machine).
 	- **"Heterogeneous" is the point.** Neither trajectory won. The multi-core CPU remains the right machine for latency-sensitive sequential control flow; the many-thread GPU is the right machine for the computationally intensive, data-parallel parts. Real applications need both, which is why this is a book about heterogeneous parallel *programming*.
 	- **The whole GPU design follows from one economic fact**: latency reduction scales superlinearly in area and power, throughput scales linearly. Everything else — small ALUs, long pipelines, tiny caches, thousands of threads, wide memory — is downstream of that.
@@ -167,5 +223,7 @@
 	- **Adoption is a three-legged stool** (installed base, form factor, programming model). Gaming funded the first two; CUDA supplied the third. The AI boom is a tenant in a house built for video games.
 	- **The memory hierarchy is the programming model.** CUDA exposes the on-chip/off-chip boundary as *declarations*, so choosing where a variable lives is choosing its speed. Optimization means raising the compute-to-global-memory-access ratio — i.e. moving work inside the chip boundary.
 	- **The register file is where both threads of this note meet**: it is enormous on a GPU *because* threads are the latency-hiding mechanism, and dynamically partitioned *because* the number of resident threads is the tuning knob. On a CPU, where a thread is precious and few, a fixed small file and a save/restore context switch are the right answer instead.
+	- **KV caching is just memoization with a causality proof.** Nothing about it is GPU-specific; it works because causal masking makes every previously computed row of $QK^\top$, softmax, and $O$ **provably unchanged** by the next token. The engineering is in exploiting that, not in discovering it.
+	- **An optimization can relocate a bottleneck rather than remove it.** KV caching turns decoding from compute-bound into memory-bandwidth-bound — which is precisely the resource a throughput-oriented design is *least* generous with. That single fact explains most of modern LLM serving: batching, speculative decoding, quantization, paged KV caches, and the hunt for HBM bandwidth.
 	- The 2003 discontinuity is the reason a note like this matters for AI infrastructure at all: the entire modern LLM stack sits on the many-thread branch of a fork that was forced by **heat**, not by an algorithmic insight.
-	- Related: [[2026-01-semi-knowledge]], [[2026-06-gpu-connectivity-solutions]], [[2026-05-llm-hw-sw-stack]], [[2026-05-inference-engineering]]
+	- Related: [[2026-01-semi-knowledge]], [[2026-06-gpu-connectivity-solutions]], [[2026-05-llm-hw-sw-stack]], [[2026-05-inference-engineering]], [[2026-04-cs336-lecture-01-overview-tokenization]]
