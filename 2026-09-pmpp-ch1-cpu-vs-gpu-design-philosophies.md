@@ -1,5 +1,5 @@
-- **Source**: *Programming Massively Parallel Processors*, Chapter 1 "Introduction" (pp. 1–6, §1.1 Heterogeneous parallel computing). Elsevier, © 2027. DOI [10.1016/B978-0-44-343900-1.00009-3](https://doi.org/10.1016/B978-0-44-343900-1.00009-3). Read from photographed book pages.
-- **One-liner**: The 2003 power wall split the microprocessor into two trajectories that never re-merged — **multi-core** kept optimizing the latency of one thread, **many-thread** kept optimizing the throughput of millions — and the resulting ~100× peak-FLOPS gap is not an accident of engineering skill but the direct consequence of where each design spends its chip area and power budget.
+- **Source**: *Programming Massively Parallel Processors*, Chapter 1 "Introduction" (§1.1 Heterogeneous parallel computing, pp. 1–6) and Chapter 5 (§5.2 CUDA memory types, plus the "CPU vs. GPU Register Architecture" sidebar, pp. 98–99). Elsevier, © 2027. DOI [10.1016/B978-0-44-343900-1.00009-3](https://doi.org/10.1016/B978-0-44-343900-1.00009-3). Read from photographed book pages.
+- **One-liner**: The 2003 power wall split the microprocessor into two trajectories that never re-merged — **multi-core** kept optimizing the latency of one thread, **many-thread** kept optimizing the throughput of millions — and the resulting ~100× peak-FLOPS gap is not an accident of engineering skill but the direct consequence of where each design spends its chip area and power budget. The same split resurfaces one level down, in the memory hierarchy and the register file.
 
 - ## 1. The virtuous cycle, and the wall it hit
 	- Computing has always been **demand-limited, not supply-limited**: applications have consistently wanted more speed and memory than devices could offer. The book's roll-call of insatiable workloads — weather forecast timeliness, accuracy of engineering structural analysis, realism of computer-generated graphics, airline reservations processed per second, fund transfers per second, and (recently) **deep learning**.
@@ -77,11 +77,95 @@
 	  | **Programmability** | The interface, not the silicon, gated adoption | Until 2006 graphics chips were very hard to use: computation had to be **expressed as a function that paints a pixel**, accessed through **OpenGL or Direct3D**. This was **GPGPU** — General Purpose Programming using a Graphics Processing Unit. Even with higher-level environments, code still had to fit APIs designed to paint pixels, which **limited the kinds of applications** that could be written |
 	- The sequencing is the lesson: raw GPU throughput existed *before* 2006, but adoption required removing the pixel-painting abstraction (CUDA, 2007) on top of an installed base that gaming had already paid for. **Hardware capability, market presence, and a usable programming model had to arrive together.**
 
-- ## 9. Takeaways
+- ## 9. The CUDA device memory model (Ch. 5, Fig. 5.1)
+	- The purpose of having several memory types at all: they exist so the programmer can **improve the compute-to-global-memory-access ratio** of a kernel. By declaring a CUDA variable into one of the memory types, the programmer **dictates its visibility and its access speed** — the type system *is* the performance control.
+	- **Fig. 5.1 redrawn** (texture memory omitted, as in the book):
+	  ```
+	                                 GRID
+	  +-------------------------------------------------------------+
+	  |  Block (0,0)                      Block (1,0)               |
+	  |  +------------------------+       +----------------------+  |
+	  |  |     Shared Memory      |       |    Shared Memory     |  |   per-block,
+	  |  +------------------------+       +----------------------+  |   on-chip
+	  |     ^            ^                   ^            ^         |
+	  |     v            v                   v            v         |
+	  |  +---------+ +---------+          +---------+ +---------+   |   per-thread,
+	  |  |Registers| |Registers|          |Registers| |Registers|   |   on-chip
+	  |  +---------+ +---------+          +---------+ +---------+   |
+	  |     ^            ^                   ^            ^         |
+	  |     v            v                   v            v         |
+	  |  +---------+ +---------+          +---------+ +---------+   |
+	  |  |Thread   | |Thread   |          |Thread   | |Thread   |   |
+	  |  | (0,0)   | | (1,0)   |          | (0,0)   | | (1,0)   |   |
+	  |  +---------+ +---------+          +---------+ +---------+   |
+	  |       |            |                   |            |       |
+	  +-------|------------|-------------------|------------|-------+
+	          v            v                   v            v
+	  +-------------------------------------------------------------+
+	  |   Global Memory     R/W by device,  R/W by host             |   per-grid,
+	  +-------------------------------------------------------------+   OFF-chip
+	  |   Constant Memory   read-only by device,  R/W by host       |   (DRAM)
+	  +-------------------------------------------------------------+
+	                              ^
+	                              |  host transfers data to/from
+	                          +--------+
+	                          |  Host  |
+	                          +--------+
+	  ```
+	- **Who may touch what** (the two bullet lists in Fig. 5.1):
+		- **Device code can**: R/W **per-thread registers**; R/W **per-thread local memory**; R/W **per-block shared memory**; R/W **per-grid global memory**; **read only** per-grid **constant memory**.
+		- **Host code can**: transfer data **to/from per-grid global and constant memories** — and nothing else. The host has no handle on registers, shared, or local memory.
+	- | Memory | Scope | Where | Device access | Host access | Character |
+	  |---|---|---|---|---|---|
+	  | **Registers** | one thread | **on-chip** | R/W | — | Very high speed, highly parallel access; a thread can only touch its own. Kernels use them for frequently accessed per-thread variables |
+	  | **Local** | one thread (private) | **off-chip** — it is the thread's own section of global memory | R/W | — | *Same latency as global memory.* Holds what can't live in registers: statically allocated arrays, **spilled registers**, other elements of the thread's **call stack** |
+	  | **Shared** | all threads in a block | **on-chip** | R/W | — | High speed but **not as fast as registers**; the efficient means for threads in a block to **cooperate** by sharing input data and intermediate results |
+	  | **Global** | whole grid | off-chip DRAM | R/W | R/W | Long latency, relatively low bandwidth |
+	  | **Constant** | whole grid | off-chip DRAM | **read-only** | R/W | **Short-latency, high-bandwidth read-only** access from the device |
+	- **The trap worth remembering**: "local memory" is local only in *scope*, not in *distance*. It is carved out of global memory, so it carries full global-memory latency — a spilled register is a DRAM access wearing a local variable's name.
+	- **Escape hatch**: statically allocated arrays that are accessed **only with constant indices** can still be allocated into registers.
+	- (Fig. 5.1 is an incomplete overview — **texture memory** exists but the book does not cover it.)
+
+- ## 10. Why registers matter: the von Neumann boundary (Fig. 5.2)
+	- Virtually all modern processors, CUDA devices included, trace back to the **von Neumann model (1945)** — the same model that made the thread a sequential instruction stream back in §2. The global memory of a CUDA device is simply the **Memory box** of that model; the **processor box** is the chip boundary we know today.
+	- **The chip boundary**, drawn from the text's description of Fig. 5.2:
+	  ```
+	  <========= PROCESSOR CHIP =========>||<======== OFF-CHIP ========>
+	                                      ||
+	     Register File                    ||     Global Memory
+	     Shared Memory                    ||     (DRAM technology)
+	                                      ||
+	     very short access latency        ||     long access latency
+	     drastically higher bandwidth     ||     relatively low bandwidth
+	                                      ||
+	     aggregate register-file bandwidth (all SMs)
+	          >= 100x  the global-memory bandwidth
+	  ```
+	- **Three distinct wins from putting a variable in a register**, which the book is careful to separate:
+		- **Latency**: on-chip, so access latency is very short compared with off-chip DRAM.
+		- **Bandwidth**: the aggregated bandwidth of all register files across all SMs is **at least two orders of magnitude higher** than global memory's — and, crucially, a register access **no longer consumes off-chip global memory bandwidth at all**. That shows up directly as an **increased compute-to-global-memory-access ratio**.
+		- **Instruction count** (the subtler point): an access to a register involves **fewer instructions** than an access to global memory. *(The book's explanation continues past the photographed page — the argument concerns how arithmetic instructions in modern processors encode their operands.)*
+	- This is the same §7 economics seen from the software side: the hardware made off-chip access cheap to *build* and expensive to *use*, so the programmer's job is to keep data on-chip.
+
+- ## 11. CPU vs. GPU register architecture (Ch. 5 sidebar)
+	- The clearest single instance of the whole note's thesis — the **same component, designed oppositely, because the design objectives differ**.
+	- | | **CPU register file** | **GPU register file** |
+	  |---|---|---|
+	  | **On context switch** | **Saves and restores** the outgoing thread's registers to memory | Nothing is saved — the registers of **all threads scheduled on the processing block stay resident** in the block's register file |
+	  | **Switching cost** | Real overhead per switch | **Zero-overhead scheduling** — switching between warps is **instantaneous**, since the incoming threads' registers are already there |
+	  | **Size** | Small | **Substantially larger** — it must hold every resident thread's state at once |
+	  | **Allocation** | A **fixed** set of registers per thread, regardless of the thread's actual demand | **Dynamic resource partitioning**: an SM may give few registers per thread and run **many** threads, or more registers per thread and run **fewer** |
+	  | **Design requirement** | Fixed partitioning | The file itself must be **built to support dynamic partitioning** |
+	- **The causal chain**: GPUs hide latency by switching threads (§7) → switching must therefore be free → every resident thread's registers must stay live on-chip → the register file must be huge → and since occupancy is the latency-hiding budget, registers-per-thread must be **tradeable against thread count** at runtime.
+	- **Occupancy as the programmer's dial**: registers-per-thread and threads-per-SM trade off directly. Spending more registers per thread buys per-thread speed and costs you the parallelism that was hiding your memory latency in the first place.
+
+- ## 12. Takeaways
 	- **Chip history in one line**: frequency scaling (to 2003) → multi-core (parallelism the programmer must expose) → heterogeneous multi-core + many-thread (parallelism at two very different granularities on the same machine).
 	- **"Heterogeneous" is the point.** Neither trajectory won. The multi-core CPU remains the right machine for latency-sensitive sequential control flow; the many-thread GPU is the right machine for the computationally intensive, data-parallel parts. Real applications need both, which is why this is a book about heterogeneous parallel *programming*.
 	- **The whole GPU design follows from one economic fact**: latency reduction scales superlinearly in area and power, throughput scales linearly. Everything else — small ALUs, long pipelines, tiny caches, thousands of threads, wide memory — is downstream of that.
 	- **Two gaps, not one**: ~100× in peak FLOPS *and* ~10× in memory bandwidth. The bandwidth gap comes largely from the relaxed memory model games tolerate and CPUs cannot.
 	- **Adoption is a three-legged stool** (installed base, form factor, programming model). Gaming funded the first two; CUDA supplied the third. The AI boom is a tenant in a house built for video games.
+	- **The memory hierarchy is the programming model.** CUDA exposes the on-chip/off-chip boundary as *declarations*, so choosing where a variable lives is choosing its speed. Optimization means raising the compute-to-global-memory-access ratio — i.e. moving work inside the chip boundary.
+	- **The register file is where both threads of this note meet**: it is enormous on a GPU *because* threads are the latency-hiding mechanism, and dynamically partitioned *because* the number of resident threads is the tuning knob. On a CPU, where a thread is precious and few, a fixed small file and a save/restore context switch are the right answer instead.
 	- The 2003 discontinuity is the reason a note like this matters for AI infrastructure at all: the entire modern LLM stack sits on the many-thread branch of a fork that was forced by **heat**, not by an algorithmic insight.
 	- Related: [[2026-01-semi-knowledge]], [[2026-06-gpu-connectivity-solutions]], [[2026-05-llm-hw-sw-stack]], [[2026-05-inference-engineering]]
