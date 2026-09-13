@@ -1,4 +1,4 @@
-- **Source**: *Programming Massively Parallel Processors*, Chapter 1 "Introduction" (§1.1 Heterogeneous parallel computing, pp. 1–6), Chapter 5 (§5.2 CUDA memory types, plus the "CPU vs. GPU Register Architecture" sidebar, pp. 98–99), and Chapter 20 "Large language models" (§20.4 KV caching, §20.5 Flash attention, §20.6 KV cache arithmetic intensity and memory requirement, §20.7 Alleviating the memory requirements of the attention mechanism; pp. 488–492 and 504–508). Elsevier, © 2027. DOI [10.1016/B978-0-44-343900-1.00009-3](https://doi.org/10.1016/B978-0-44-343900-1.00009-3). Read from photographed book pages.
+- **Source**: *Programming Massively Parallel Processors*, Chapter 1 "Introduction" (§1.1 Heterogeneous parallel computing, pp. 1–6), Chapter 5 (§5.2 CUDA memory types, plus the "CPU vs. GPU Register Architecture" sidebar, pp. 98–99), and Chapter 20 "Large language models" (§20.4 KV caching, §20.5 Flash attention, §20.6 KV cache arithmetic intensity and memory requirement, §20.7 Alleviating the memory requirements of the attention mechanism, §20.8 Summary; pp. 488–492 and 504–510). Elsevier, © 2027. DOI [10.1016/B978-0-44-343900-1.00009-3](https://doi.org/10.1016/B978-0-44-343900-1.00009-3). Read from photographed book pages.
 - **One-liner**: The 2003 power wall split the microprocessor into two trajectories that never re-merged — **multi-core** kept optimizing the latency of one thread, **many-thread** kept optimizing the throughput of millions — and the resulting ~100× peak-FLOPS gap is not an accident of engineering skill but the direct consequence of where each design spends its chip area and power budget. The same split resurfaces one level down in the memory hierarchy and the register file — and again at the top of the stack, where KV caching turns LLM decoding into a memory-bandwidth problem.
 - ## 1. The virtuous cycle, and the wall it hit
 	- Computing has always been **demand-limited, not supply-limited**: applications have consistently wanted more speed and memory than devices could offer. The book's roll-call of insatiable workloads — weather forecast timeliness, accuracy of engineering structural analysis, realism of computer-generated graphics, airline reservations processed per second, fund transfers per second, and (recently) **deep learning**.
@@ -259,14 +259,63 @@
 	  | **K/V per head** | Every query head has its own $K,V$ | **All heads share one** $K,V$ | One $K,V$ per **group** of query heads |
 	  | **Total KV cache** | $b N \cdot 2 l \cdot h_q d \cdot p$ | $b N \cdot 2 l \cdot d \cdot p$ | $b N \cdot 2 l \cdot \frac{h_q}{g_q} d \cdot p$ |
 	  | **Reduction vs. MHA** | — | **Inversely proportional to the number of heads** ($h_q\times$ smaller) | Between the two, tunable by $g_q$ |
-	  | **Arithmetic intensity** | $\approx 1$ | $\approx h_q$ | Between |
+	  | **Arithmetic intensity** | $\approx 1$ | $\approx h_q$ | $\approx g_q$ |
 	- **Eq. (20.11)** — MQA's arithmetic intensity, roughly $h_q$ times higher than MHA's:
 	  $$
 	  AI_{\text{MQA}} \approx \frac{2 N h_q d}{2 h_q d + 2 d N} = \frac{N h_q}{h_q + N} \approx h_q
 	  $$
 	- Note where the gain comes from: the numerator (FLOPs) is **unchanged** — MQA does the same arithmetic. Only the KV-cache term in the denominator shrinks by $h_q$. **The optimization is purely a traffic reduction**, which is the whole game once you are bandwidth-bound.
-	- **GQA** [15] is the interpolation: a few **groups ($g_q$) of query heads** share $K,V$, giving Eq. (20.12) — cache proportional to $h_q/g_q$ rather than $h_q$ (MHA) or 1 (MQA). *(The book writes the factor as $h_q/g_q$; MHA is the $g_q = 1$ end and MQA the $g_q = h_q$ end of the same dial.)*
-- ## 17. Takeaways
+	- **GQA** [15] is the interpolation: a few **groups ($g_q$) of query heads** share $K,V$ (Eq. 20.12), leaving $h_q/g_q$ key/value heads to cache instead of $h_q$ (MHA) or 1 (MQA).
+	- **Eq. (20.13)** — GQA's arithmetic intensity rises by exactly the **number of groups**:
+	  $$
+	  AI_{\text{GQA}} \approx \frac{2 N h_q d}{2 h_q d + 2 \frac{h_q}{g_q} d N} = \frac{N h_q}{h_q + \frac{h_q}{g_q} N} \approx g_q
+	  $$
+	- So $g_q$ is one continuous dial, not three separate designs: $g_q = 1$ is MHA ($AI \approx 1$), $g_q = h_q$ is MQA ($AI \approx h_q$), and anything between trades cache size against accuracy.
+	- **All three work with flash attention.** MHA, MQA, and GQA can all use the §14 tiling approach; the three differ in their tradeoffs across **computation, memory requirements, and model accuracy** — not in kernel compatibility.
+- ## 17. Memory optimization techniques (§20.7 continued)
+	- **Why shrinking the cache per token isn't enough.** Even with MQA/GQA, **batch size and context length stay constrained by GPU memory capacity** — and the book names a second, avoidable cost: the memory reserved for KV caches is typically **over-provisioned for the largest possible input**, so it ends up **fragmented and wasted**. That is an *allocation* problem, not a *sizing* problem, and it needs a different fix.
+	- ### PagedAttention — treat the KV cache like virtual memory
+		- **PagedAttention** [12] is explicitly **inspired by the paging mechanisms of operating systems**: partition the KV cache into **blocks of equal size** and load them into GPU memory (from the larger system memory) **only when they are needed for computation**.
+		- The payoff is the same as OS paging: no contiguous over-allocation per sequence, so **fragmentation and over-provisioning disappear** and the freed capacity turns directly into a larger batch. It changes *where and when* cache lives, not how big a token's cache is.
+	- ### Multi-head Latent Attention (MLA) — compress instead of share
+		- **MLA** [16] uses **low-rank joint compression of $K$ and $V$**: both vectors for each token are compressed into a **single compressed latent vector** (Fig. 20.19(d)), across **all heads and layers** — so the reduction is very significant.
+		- **Eq. (20.14)** — note there is **no factor of 2 and no $h_q$**: $K$ and $V$ are compressed *jointly*, into one latent, shared across heads:
+		  $$
+		  \text{Total KV cache size}_{\text{MLA}} = b \times N \times l \times d \times p
+		  $$
+		- **Eq. (20.15)** — AI rises because a **single latent head is shared across a large number of query heads**:
+		  $$
+		  AI_{\text{MLA}} \approx \frac{2 N h_q d}{2 h_q d + d N} = \frac{2 N h_q}{h_q + N} \approx 2 h_q
+		  $$
+		- **How it runs**: the compression/decompression **projection matrices are learned during training**. At inference, $K$ and $V$ are **decompressed by two up-projection matrices** just before the attention calculation. So **only the latent form is preserved between iterations** in the KV caches of all heads, and a head **decompresses only while it is active** during generation. The cost is extra compute (two up-projections per active head) traded for cache traffic and capacity — which is the right trade when you are bandwidth-bound.
+		- Note this beats MQA on *both* axes: half the cache of MQA ($d$ vs $2d$ per layer per token) and twice the AI ($2h_q$ vs $h_q$).
+	- ### The four attention variants side by side
+		- | Variant | Cached per token, per layer | Total KV cache (Eq.) | Arithmetic intensity |
+		  |---|---|---|---|
+		  | **MHA** | $2 h_q d$ — every head its own $K,V$ | $bN \cdot 2l h_q d\, p$ (20.8) | $\approx 1$ |
+		  | **GQA** | $2 \frac{h_q}{g_q} d$ — one $K,V$ per group | $bN \cdot 2l \frac{h_q}{g_q} d\, p$ (20.12) | $\approx g_q$ |
+		  | **MQA** | $2d$ — one $K,V$ for all heads | $bN \cdot 2l\, d\, p$ (20.10) | $\approx h_q$ |
+		  | **MLA** | $d$ — one **compressed latent** for $K$ *and* $V$ | $bN \cdot l\, d\, p$ (20.14) | $\approx 2 h_q$ |
+	- **What Fig. 20.19 actually shows** (the shaded boxes are what is cached during inference):
+	  ```
+	    (a) MHA            (b) MQA            (c) GQA            (d) MLA
+	    Q Q Q Q            Q Q Q Q            Q Q Q Q            Q Q Q Q
+	    | | | |             \ \ / /           \ /   \ /           \ | | /
+	    K K K K                K                K     K            [ K V ]
+	    V V V V                V                V     V               |
+	                                                              projection
+	                                                                  |
+	                                                            [compressed
+	                                                             latent KV]
+	  
+	    cached:            cached:            cached:            cached:
+	    h_q K/V heads      1 K/V head         h_q/g_q heads      1 latent vector
+	  ```
+	- ### Mixture of Experts — the orthogonal lever
+		- **MoE** (e.g. **Mixtral** [17]) is called out as **a different, orthogonal technique** for scaling LLMs: a **sparsely activated** architecture where a **gating mechanism** picks a small subset of **specialized sub-networks** per input.
+		- Effect: models can be **huge in parameter count but have reduced computational needs per token**. It attacks the *weights* side of the memory equation and the FLOPs per token — not the KV cache at all, which is why it composes with everything above.
+	- **The shape of the whole design space**, as the chapter's own summary puts it: a naive multi-kernel implementation (softmax being the novel part) → **KV caching** to kill redundant computation in generation → **flash attention** to raise arithmetic intensity and cut prefill latency → and finally the **memory requirements of KV caching** and the techniques that alleviate them so batching can raise GPU utilization. The book's closing note is that this is the *fundamentals*, and "there is a very large design space" left to explore.
+- ## 18. Takeaways
 	- **Chip history in one line**: frequency scaling (to 2003) → multi-core (parallelism the programmer must expose) → heterogeneous multi-core + many-thread (parallelism at two very different granularities on the same machine).
 	- **"Heterogeneous" is the point.** Neither trajectory won. The multi-core CPU remains the right machine for latency-sensitive sequential control flow; the many-thread GPU is the right machine for the computationally intensive, data-parallel parts. Real applications need both, which is why this is a book about heterogeneous parallel *programming*.
 	- **The whole GPU design follows from one economic fact**: latency reduction scales superlinearly in area and power, throughput scales linearly. Everything else — small ALUs, long pipelines, tiny caches, thousands of threads, wide memory — is downstream of that.
@@ -278,5 +327,7 @@
 	- **An optimization can relocate a bottleneck rather than remove it.** KV caching turns decoding from compute-bound into memory-bandwidth-bound — which is precisely the resource a throughput-oriented design is *least* generous with.
 	- **Arithmetic intensity is the single organizing metric of LLM serving.** $AI_{\text{MHA}} \approx 1$ FLOP/byte is the number every decode-side technique is attacking, and each attacks a different term: **batching** reuses *weights* (projections only), **speculative decoding** reuses *loaded KV cache* across several tokens, and **MQA/GQA** shrink the cache so there is less to load. Flash attention, one level down, removes the DRAM round trips *between* stages.
 	- **Capacity and intensity are the same constraint seen twice.** The KV cache is simultaneously what fills the HBM (18 GB for one GPT-3 conversation vs. 14 GB for a whole 7B model's weights) and what pins AI at 1. That is why serving work converges on the cache: page it, quantize it, share it, or shrink it.
+	- **Three orthogonal ways to attack KV-cache memory**, and the note now has one of each: **share** it (MQA/GQA — fewer K/V heads), **compress** it (MLA — one low-rank latent for K and V jointly), and **manage** it (PagedAttention — OS-style paging so nothing is over-provisioned or fragmented). They compose; MoE then attacks the weights and per-token FLOPs from a fourth direction entirely.
+	- **Cache size and arithmetic intensity are the same number read two ways.** Every variant's AI is just $h_q$ divided by its cached K/V heads: MHA $\approx 1$, GQA $\approx g_q$, MQA $\approx h_q$, MLA $\approx 2h_q$. You cannot tune capacity and bandwidth separately — shrinking the cache *is* raising the intensity.
 	- The 2003 discontinuity is the reason a note like this matters for AI infrastructure at all: the entire modern LLM stack sits on the many-thread branch of a fork that was forced by **heat**, not by an algorithmic insight.
 	- Related: [[2026-01-semi-knowledge]], [[2026-06-gpu-connectivity-solutions]], [[2026-05-llm-hw-sw-stack]], [[2026-05-inference-engineering]], [[2026-04-cs336-lecture-01-overview-tokenization]]
