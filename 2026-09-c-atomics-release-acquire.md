@@ -1,5 +1,22 @@
 - **Source**: Daniel Lemire, "A quick overview of atomics in C," *Daniel Lemire's blog*, 9 September 2026 (~11 min). <https://lemire.me/blog/2026/09/09/a-quick-overview-of-atomics-in-c/>
 - **One-liner**: A full memory barrier is too strong, so the standard splits it into two **one-way doors** — **release** says *"if you see me, you see everything I did before me"*, **acquire** says *"everything I do after this really happens after what I just took"* — and they are meaningless alone: they only buy you anything **as a pair**, one publishing and one subscribing through the same atomic.
+- ## 0. Getting a second thread at all
+	- C is single-threaded by default; **extra cores do not help until you create threads**. With `<threads.h>` you pass a function to `thrd_create` and wait with `thrd_join`:
+	  ```c
+	  #include <threads.h>
+	  #include <stdio.h>
+	  int worker(void *arg) {
+	      printf("hello from thread %d\n", *(int *)arg);
+	      return 0;
+	  }
+	  int main(void) {
+	      thrd_t t;
+	      int id = 1;
+	      thrd_create(&t, worker, &id);
+	      thrd_join(t, NULL);
+	  }
+	  ```
+	- **Portability warning**: C11 threads are an **optional** feature. If `__STDC_NO_THREADS__` is defined you do not have them. **Apple's C library has never shipped `<threads.h>`**, so the above does not compile on macOS, and **glibc only added it in 2.28 (2018)**. Fall back on POSIX threads (`pthread_create`, `pthread_join`).
 - ## 1. Two separate problems, often confused
 	- **Problem 1 — atomicity (garbage values).** If two threads touch the same **non-atomic** variable with no ordering between them and **at least one writes**, C calls that a **data race**: undefined behavior. An **atomic** integer "is never garbage" — you always read a value that was *once written*.
 		- Note this is a **language** guarantee, not a machine observation. On most machines you use today, aligned 8/16/32/64-bit loads and stores already are atomic; the C language does not care, so **if you do not ask for atomicity you can still be broken by your compiler**.
@@ -101,16 +118,116 @@
 	  ```
 	  Equivalently, a single decrement carrying **both** release and acquire. *The two are equivalent but not necessarily equally cheap* — and the split version is usually cheaper, because only the **last** owner pays for the acquire.
 	- **The asymmetry to remember**: **every** thread releases (each publishes "I'm done"), but **only one** thread acquires (the one about to free needs to read everyone else's publications). That asymmetry is exactly why splitting the barrier in two was worth doing.
-- ## 6. Reading it in real C
+- ## 6. The worked example — a copy-on-write shared array
+	- The payload is a **plain** `int` array; **only the reference count is atomic**. That is deliberate: *"we never write `values` while another thread might be reading them."* The atomic is the **permission slip**; the ordering annotations are what make the permission trustworthy.
+	  ```c
+	  #include <assert.h>
+	  #include <stdatomic.h>
+	  #include <stdlib.h>
+	  #define STR_SIZE 16
+	  typedef struct {
+	      atomic_int refs;
+	      int values[STR_SIZE];
+	  } shared_array;
+	  ```
+	- **Construction.** The caller owns one reference.
+	  ```c
+	  shared_array *str_new(void) {
+	      shared_array *o = malloc(sizeof *o);
+	      if (o == NULL) {
+	          return NULL;
+	      }
+	      atomic_init(&o->refs, 1);
+	      for (int i = 0; i < STR_SIZE; i++) {
+	          o->values[i] = 0;
+	      }
+	      return o;
+	  }
+	  ```
+		- `atomic_init` is **not an atomic access in the memory-model sense** — nobody else has the pointer yet, so there is no thread to race with. It is just how you initialize an `atomic_int`.
+	- ### Release, in three drafts
+	- **Draft 1 — broken, because load-and-decrement is two operations:**
+	  ```c
+	  // not real code
+	  void obj_release(shared_array *o) {
+	      auto ref = o->refs;
+	      o->refs -= 1;
+	      if (ref != 1)
+	          return;
+	      // we are the last copy
+	      free(o);
+	  }
+	  ```
+		- Two threads can both read 2, both subtract, the counter hits zero, and **nobody frees** → leak. Write the test the other way round (decrement first, then check for zero) and you get the mirror image: from 2, one thread decrements to 1, the other to 0, **both read 0 and both call `free`** → double free.
+		- The fix is **one atomic subtract that hands you the previous value**: only the thread that saw `1` was last.
+	- **Draft 2 — atomic, but relaxed, so still broken:**
+	  ```c
+	  void obj_release(shared_array *o) {
+	      if (atomic_fetch_sub_explicit(&o->refs, 1, memory_order_relaxed) != 1)
+	          return;
+	      free(o);
+	  }
+	  ```
+		- With `refs == 2` and two threads each doing `(void)o->values[4]; obj_release(o);`, this interleaving is permitted:
+		  ```
+		  [thread1] o->values[4];
+		  [thread2] atomic_fetch_sub_explicit(&o->refs, 1, memory_order_relaxed)
+		  [thread1] atomic_fetch_sub_explicit(&o->refs, 1, memory_order_relaxed)
+		  [thread1] free(o);
+		  [thread2] o->values[4];          <-- use after free
+		  ```
+		- The confusing part is that thread 2's own two statements appear **out of order** — its decrement becomes visible before its read of `values[4]`. Relaxed permits exactly that.
+	- **Draft 3 — correct:**
+	  ```c
+	  void obj_release(shared_array *o) {
+	      if (atomic_fetch_sub_explicit(&o->refs, 1, memory_order_release) != 1)
+	          return;
+	      atomic_thread_fence(memory_order_acquire);
+	      free(o);
+	  }
+	  ```
+		- The **release on every decrement** means *"I am done with the payload."*
+		- The **acquire fence, only on the last owner**, means *"I have seen that everyone else is done."* Then `free` is safe.
+		- This is §5 in eight lines: everyone publishes, one thread subscribes.
+	- ### Retain is relaxed, and that is not a shortcut
+	  ```c
+	  shared_array *str_retain(shared_array *o) {
+	      atomic_fetch_add_explicit(&o->refs, 1, memory_order_relaxed);
+	      return o;
+	  }
+	  ```
+		- **Why relaxed is sound here**: the caller **already holds a reference**, so the object cannot be freed underneath us — the last owner would need *our* reference to be gone first. No ownership is changing hands, so no ordering needs to be published or received.
+	- ### The copy-on-write update — where the acquire pays off
+	  ```c
+	  shared_array *update(size_t idx, int value, shared_array *o) {
+	      assert(idx < STR_SIZE);
+	      if (atomic_load_explicit(&o->refs, memory_order_acquire) == 1) {
+	          o->values[idx] = value;
+	          return o;
+	      }
+	      shared_array *new_o = str_new();
+	      if (new_o == NULL) {
+	          return NULL;
+	      }
+	      for (int i = 0; i < STR_SIZE; i++) {
+	          new_o->values[i] = o->values[i];
+	      }
+	      new_o->values[idx] = value;
+	      obj_release(o);
+	      return new_o;
+	  }
+	  ```
+		- **Contract**: it consumes the caller's reference and returns a reference to the array holding the new value — which **may or may not be the same object**, so after calling you must not touch the pointer you passed in. **One exception**: if a copy was needed and the allocation failed, it returns `NULL` and leaves your reference to `o` untouched, so you still own it and must still release it.
+		- **Why the load is an acquire.** If it reads `1` we are the only owner, and that `1` may be **the value written by the release decrement of the last other owner to drop out**. The acquire makes everything that thread did with `values` **happen-before our write**, and stops `o->values[idx] = value` from being moved above the load. No other thread holds a reference, so the in-place write races with nobody. Later, after a `retain`, other threads can see it.
+		- **This is why the release does double duty**: the same release that makes `free` safe is also what makes a later **in-place write** safe.
+	- ### The whole thing as a table
 	- | Operation | Order used | Why |
 	  |---|---|---|
-	  | **Release a reference** — `atomic_fetch_sub_explicit(&refs, 1, memory_order_release)` | **release** | Publishes "everything I did with the payload happened before this" |
-	  | **...then before `free`** — `atomic_thread_fence(memory_order_acquire)` | **acquire** | Only on the last owner: "I have seen that everyone else is done" |
-	  | **Retain** — `atomic_fetch_add_explicit(&refs, 1, memory_order_relaxed)` | **relaxed** | **The caller already holds a reference**, so the object cannot be freed underneath us — the last owner would need *our* reference gone first. No ordering is needed because no ownership changes hands |
-	  | **Copy-on-write check** — `atomic_load_explicit(&refs, ..., memory_order_acquire) == 1` | **acquire** | If it reads 1 we are the sole owner. That 1 may be the value written by the **release** decrement of the last other owner, so everything that thread did with the payload happens-before our in-place write |
-	- **Only the counter is atomic.** The payload is a plain array — deliberately, because *"we never write values while another thread might be reading them."* The atomic is the **permission slip**; the ordering annotations are what make the permission trustworthy.
-	- `atomic_init` is **not** an atomic access in the memory-model sense: nobody else has the pointer yet, so there is no thread to race with.
-	- Note the **release does double duty**: it both makes `free` safe *and* is what lets the last remaining owner later write the payload in place after an acquire load reads 1.
+	  | `atomic_fetch_sub_explicit(&refs, 1, ...)` in release | **release** | Publishes "everything I did with the payload happened before this" |
+	  | `atomic_thread_fence(...)` before `free` | **acquire** | Only on the last owner: "I have seen that everyone else is done" |
+	  | `atomic_fetch_add_explicit(&refs, 1, ...)` in retain | **relaxed** | Caller already holds a reference; no ownership transfer, so nothing to order |
+	  | `atomic_load_explicit(&refs, ...) == 1` in update | **acquire** | Receives the last other owner's release, making the in-place write safe |
+	  | `atomic_init(&o->refs, 1)` | *(not an access)* | No other thread has the pointer yet |
 - ## 7. What it costs, and who actually reorders
 	- **On x64, acquire and release are effectively free at the CPU**: ordinary loads already behave like acquire, ordinary stores like release.
 	- **You must still write them in C anyway** — otherwise **the compiler** may reorder the payload accesses. This is the part that surprises people: on strong hardware the annotations often generate no extra instructions, yet omitting them is still a real bug, because the compiler is the reorderer you forgot about.
