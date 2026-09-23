@@ -1,1 +1,3 @@
+file-created-at:: 2026-07-01
+
 - an Apple A-series chip is typically about two-thirds the size of an M-series chip, which right off the bat means a lower price. TSMC charges per-wafer; a smaller chip means more chips per wafer, i.e. a lower price per-chip. Moreover, smaller chips mean better yields, which also corresponds to lower prices.

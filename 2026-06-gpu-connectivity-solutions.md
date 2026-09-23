@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-01
+
 - | Feature / Dimension | NVLink (Nvidia) | Compute Express Link (CXL) | InfiniBand (Quantum) | AI-Optimized Ethernet (Spectrum-X)|
   |---|---|---|---|---|
   | **Topology Focus** | Scale-Up (Intra-node) | Scale-Out / Disaggregation | Scale-Out (Inter-node) | Scale-Out (Inter-node / Cloud) |

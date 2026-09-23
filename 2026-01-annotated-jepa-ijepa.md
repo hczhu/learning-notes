@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-18
+
 - **Source**: Elon Litman, "The Annotated JEPA" (filed under *Deep Learning*), 27 Jan 2026. A from-scratch, annotated walkthrough of Joint Embedding Predictive Architectures — "doing for JEPA what *The Annotated Transformer* did for the Transformer." Builds I-JEPA in PyTorch, then extends to V-JEPA / V-JEPA 2 / LeJEPA.
 - **One-liner**: JEPA is Yann LeCun's answer to self-supervised learning without labels — **predict in representation (latent) space, not pixel space** — so the model learns semantic structure and ignores high-entropy noise, with an anti-collapse mechanism (EMA teacher, or a distributional regularizer) doing the load-bearing work.
 

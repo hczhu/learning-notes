@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-01
+
 ## Future directions
 	- **Memory as a first-class subsystem**
 		- CC today exposes the factual tier (CLAUDE.md, auto-memory) and the working tier (the conversation window);

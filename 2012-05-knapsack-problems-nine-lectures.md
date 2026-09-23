@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-12
+
 - **Source**: 崔添翼 (Tianyi Cui), *背包问题九讲 2.0 beta1.2* ("Nine Lectures on Knapsack Problems"), 2012-05-08, part of the *动态规划的思考艺术* (The Art of Dynamic Programming Thinking) series. CC BY-NC-SA. https://github.com/tianyicui/pack
 - **One-liner**: Every knapsack variant reduces to one core DP recurrence $F[i,v]=\max\{F[i-1,v],\ F[i-1,v-C_i]+W_i\}$; the variants differ only in loop order, item preprocessing (splitting/grouping), or extra state dimensions.
 

@@ -1,3 +1,5 @@
+file-created-at:: 2026-09-16
+
 - **Source**: Eric Rescorla, [RFC 8446: The Transport Layer Security (TLS) Protocol Version 1.3](https://www.rfc-editor.org/rfc/rfc8446.html), August 2018—especially Sections 4.1.2, 4.2.1, 5.2, and Appendix D.
 - **One-liner**: TLS 1.3 negotiates its real version in an extension while keeping legacy fields and optional handshake signals looking like TLS 1.2, allowing modern peers to select TLS 1.3 and older peers to fall back normally.
 

@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-18
+
 - **Source**: Windred DP, Burns AC, Lane JM, Saxena R, Rutter MK, Cain SW, Phillips AJK. "Sleep regularity is a stronger predictor of mortality risk than sleep duration: A prospective cohort study." *SLEEP* 47(1), 2024 (advance access 21 Sep 2023). Open access. DOI: [10.1093/sleep/zsad253](https://doi.org/10.1093/sleep/zsad253)
 - **One-liner**: In >60,000 UK Biobank adults with a week of wrist accelerometry, **how regular your sleep timing is** predicts all-cause, cardiometabolic, and cancer mortality more strongly than **how long you sleep** — and regularity is a more direct proxy for circadian health.
 

@@ -1,3 +1,5 @@
+file-created-at:: 2026-09-18
+
 - **Source**: Excerpt, §§2.1–2.5 on looped transformers (Figures 5–11). *(No byline in the text provided; the author refers to "my LLM Architecture Gallery" and coverage on Substack Notes, which points to Sebastian Raschka.)*
 - **One-liner**: A looped transformer runs the hidden states through the **same** blocks more than once, so effective depth rises while the weight count does not — but it saves **only** weight memory: forward compute, backprop, and KV cache all scale with **block applications**, not with distinct blocks. The interesting designs are therefore the ones that add **adaptivity**, deciding per token how many passes to spend.
 - ## 1. Vocabulary (worth pinning down first)

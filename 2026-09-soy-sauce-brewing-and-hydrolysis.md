@@ -1,3 +1,5 @@
+file-created-at:: 2026-09-11
+
 - **Source**: User-provided passage about takeout soy-sauce packets (original author, date, and URL unspecified), checked against manufacturer documents, Japanese Agricultural Standards, and FAO/WHO Codex records below. Verification date: September 11, 2026.
 - **One-liner**: Products sold as soy sauce can be fermented, made from hydrolyzed vegetable protein, or blended; identify the production method from product-specific evidence rather than the name or packaging alone.
 - **Related**: [[Food Science]] · [[Fermentation]] · [[Food Labeling]]

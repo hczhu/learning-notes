@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-23
+
 - **Source**: `tiktoken/_educational.py` in [openai/tiktoken](https://github.com/openai/tiktoken), commit `08a5f3b` (2026-05-24). A ~220-line pure-Python mirror of the Rust core, written to be read rather than run in production. All numbers below were measured by running it, not read off the page.
 - **One-liner**: BPE training picks merges by **frequency**; BPE encoding picks merges by **rank**. Frequency is consulted exactly once — at training time — and then frozen into the token ids, because a new token's id *is* `len(vocab)` at the moment it was learned. Encoding is therefore not a greedy search for the shortest output; it is a **replay of training history in the order it happened**.
 - ## Orientation

@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-26
+
 - **Source**: Nassim Nicholas Taleb, *Fooled by Randomness: The Hidden Role of Chance in Life and in the Markets* (first published 2001).
 - ## Kelly Criterion
 	- A stock has a probability $p$ of rising by $100b$% and a probability $q = 1-p$ of falling by $100a$%. What percentage of your capital should you invest in the stock?

@@ -1,3 +1,5 @@
+file-created-at:: 2026-09-18
+
 - **Source**: Daniel Lemire, "A quick overview of atomics in C," *Daniel Lemire's blog*, 9 September 2026 (~11 min). <https://lemire.me/blog/2026/09/09/a-quick-overview-of-atomics-in-c/>
 - **One-liner**: A full memory barrier is too strong, so the standard splits it into two **one-way doors** — **release** says *"if you see me, you see everything I did before me"*, **acquire** says *"everything I do after this really happens after what I just took"* — and they are meaningless alone: they only buy you anything **as a pair**, one publishing and one subscribing through the same atomic.
 - ## 0. Getting a second thread at all
