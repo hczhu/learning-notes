@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-18
+
 - **Source**: Reynold Xin (Databricks), "From monolith to Lakebase to LTAP: rethinking the database from storage up," Databricks Engineering Blog, 30 Jun 2026. Plus a Hacker News discussion summary (first-hand builder experiences + highly-voted insights).
 - **One-liner**: Externalize a monolithic database's two on-disk structures (WAL + data files) into independent cloud services, then materialize the durable copy in an open columnar format (Parquet/Iceberg/Delta) so **transactions and analytics run on a single copy of the data** — no CDC, no mirroring, no ETL. Databricks calls this **LTAP** (Lake Transactional/Analytical Processing).
 

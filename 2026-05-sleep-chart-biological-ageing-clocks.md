@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-17
+
 - **Source**: The MULTI Consortium; O'Toole, Song, Anagnostakis, Yang, Tian, … Wen (corresponding: Junhao Wen). "Sleep Chart of biological ageing clocks in middle and late life." *Nature* (2026), published 13 May 2026. Open access. DOI: [10.1038/s41586-026-10524-5](https://www.nature.com/articles/s41586-026-10524-5)
 - **One-liner**: Across 9 brain/body systems and 3 omics layers, self-reported sleep duration has a **U-shaped** relationship with biological ageing — the youngest biological age is reached at ~6.4–7.8 h of sleep, and both short (<6 h) and long (>8 h) sleep track with faster ageing, higher systemic disease risk, and greater mortality.
 

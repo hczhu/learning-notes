@@ -1,3 +1,5 @@
+file-created-at:: 2026-09-18
+
 - **Source**: "Processors are getting wider," blog post, 1 September 2025 (~3 min read). *(No author byline in the text provided.)*
 - **One-liner**: Clock frequency stopped scaling around 5 GHz, so single-core speed now comes from **width** — retiring more instructions per cycle — which means your code already runs in parallel under the hood whether or not you asked for it.
 - ## 1. The frequency ceiling

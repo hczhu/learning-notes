@@ -1,3 +1,5 @@
+file-created-at:: 2026-09-18
+
 - **Source**: Excerpt, §1.3 "Computer use training" (with Figure 3, "Overview of a computer-use training workflow"). *(No author or publication byline in the text provided.)*
 - **One-liner**: When OpenAI buys tens of thousands of Mac Minis and Mac Studios for reinforcement learning, the Macs are **not** training anything — they are the **environment**. The policy lives on GPUs; the Macs supply a real macOS for it to act on, and the loop between them is ordinary RL with the screen as the observation and mouse/keyboard events as the action space.
 - ## 1. The claim that makes the rest make sense

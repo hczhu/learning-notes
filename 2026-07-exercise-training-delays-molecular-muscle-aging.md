@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-24
+
 - **Source**: Janssens GE, Trętowicz MM, Grevendonk L, et al. "Delayed molecular aging, preservation of energy metabolism and enhanced exercise response in exercise-trained human muscle." *Nature Aging* 6, 1482–1500 (2026). DOI: [10.1038/s43587-026-01150-x](https://doi.org/10.1038/s43587-026-01150-x)
 - **One-liner**: Regular daily movement is valuable, but sustained, structured exercise training may preserve the energy-producing machinery of aging muscle better than movement alone.
 

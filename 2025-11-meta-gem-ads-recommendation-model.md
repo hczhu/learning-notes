@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-03
+
 - **Source**: Meta Engineering, "Meta's Generative Ads Model (GEM): The Central Brain Accelerating Ads Recommendation AI Innovation," by Huayu Li, Xiaoyi Liu, Jade Nie, Ellie Wen, Chunzhi Yang, Jiyan Yang, Nancy Yu, Habiya Beg, Gil Arditi, and Neeraj Bhatia, posted November 10, 2025. Source provided as local PDF: `Meta’s Generative Ads Model (GEM)_ The Central Brain Accelerating Ads Recommendation AI Innovation - Engineering at Meta.pdf`.
 - **One-liner**: GEM is Meta's LLM-scale foundation model for ads recommendation: a large, multi-domain, multimodal recommender trained on thousands of GPUs, then post-trained / distilled into many latency-sensitive vertical ads models.
 

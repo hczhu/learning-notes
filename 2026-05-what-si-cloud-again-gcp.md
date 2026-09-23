@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-01
+
 - ![Different cloud computing models and service structures](https://www.gstatic.com/bricks/image/Zpw-v4ZOiAkbLm9ARSl68tGaZFYsFsz1ABwRbl8Cj_ozj12jCTPmgVGKBARz3Xwum1CUsMQ7Hog.jpeg){:height 710, :width 1248}
 - from https://cloud.google.com/learn/paas-vs-iaas-vs-saas
 - ## Context

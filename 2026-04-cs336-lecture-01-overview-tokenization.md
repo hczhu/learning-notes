@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-29
+
 - **Source**: Stanford **CS336: Language Models From Scratch**, Spring 2026 (3rd offering), Lecture 01 — course overview + tokenization unit. Instructors: Percy Liang, Tatsunori Hashimoto; CAs: Marcel Rød, Herman Brunborg, Steven Cao. Delivered as an *executable lecture* (`lecture_01.py` — a Python program whose execution renders the lecture). Spring 2025 lectures on YouTube.
 - **One-liner**: The course exists because researchers have become **disconnected from the underlying technology** — and its single organizing principle is **efficiency**: `accuracy = efficiency × resources`, so the real question is always "what's the best model I can build given a fixed compute and data budget?"
 

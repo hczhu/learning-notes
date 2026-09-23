@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-18
+
 - **Source**: Pradyumna Prasad, "How to ask for help from people who don't know you," 30 June 2026 (personal site; author is a CS student at NUS interning at Elicit). Twitter [@PradyuPrasad](https://twitter.com/PradyuPrasad), GitHub [pradyuprasad](https://github.com/pradyuprasad).
 - **One-liner**: Asking for help is a learnable skill, not a personality trait — and the whole skill reduces to one principle: **put the other person's mind first, not your own request.**
 

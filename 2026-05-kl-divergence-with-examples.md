@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-01
+
 ## Expected Surprise
 	- For a random variable $X$ with probability distribution $P(X = x) = p_x$, the surprise (or surprisal) is defined as:
 	  $$

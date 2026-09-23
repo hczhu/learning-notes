@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-02
+
 ## Is AI Intelligent? - Bertrand Meyer
 - Source
 	- Bertrand Meyer, "Is AI Intelligent?", ACM, posted Apr 23 2026

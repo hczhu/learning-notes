@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-02
+
 - **Source**: Peter J. Denning, "The Profession of IT: Listening," *Communications of the ACM*, June 2026, Vol. 69 No. 6, pp. 30–33. DOI:10.1145/3808690.
 - **One-liner**: Listening is not decoding messages — it's *interpreting the world*. Good coordination, attractive offers, and great customer service all depend on "deep listening": attuning to how the *other* person interprets, not just what they said.
 

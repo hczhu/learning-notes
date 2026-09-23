@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-18
+
 - **Source**: Podcast summary of Dex (Dexter Horthy, HumanLayer) — author of "[12-Factor Agents: Principles for building reliable LLM applications](https://github.com/humanlayer/12-factor-agents)." Notes on AI coding, context engineering, and running a "software factory."
 - **One-liner**: Never ship code no human has read; keep humans in the loop where leverage is highest (design/architecture), and treat the context window — not the model — as the thing you actually engineer.
 

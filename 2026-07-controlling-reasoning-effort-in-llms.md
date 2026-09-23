@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-18
+
 - **Source**: Sebastian Raschka, PhD, "Controlling Reasoning Effort in LLMs — How LLMs Learn Low-, Medium-, and High-Effort Reasoning Modes," *Ahead of AI* (Substack), 18 Jul 2026.
 - **One-liner**: A reasoning model's "effort" or "thinking" setting is not a prompt-engineering trick — it is a **trained behavior**. Effort maps to how many reasoning tokens the model spends (a form of inference-time scaling), taught via effort-conditioned SFT and/or token-cost-shaped RL, and selected at inference through system prompts or chat-template toggles.
 

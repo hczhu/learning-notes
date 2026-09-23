@@ -1,3 +1,5 @@
+file-created-at:: 2026-07-01
+
 ## Finetune an LM using self-annotated text
 - ### Ask LM to annotate training text with API calls as augmented text
 	- The prompt: Your task is to add calls to a Question Answering API to a piece of text. The questions should help you get information required to complete the text. You can call the API by writing "[QA(question)]" where "question" is the question you want to ask. Here are some examples of API calls:
