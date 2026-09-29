@@ -38,7 +38,7 @@ file-created-at:: 2024-06-15
 
 **Add it whenever you create a new `.md` file.**
 
-- **Placement** — it must sit in the file's *first block*, so Logseq reads it as a page property. In a plain file, that is a bare line at the very top followed by a blank line. When the file already opens with a property block, add it as another line of that same block: a bare line under a bare `tags:: …`, or a two-space-indented `  file-created-at:: …` under a `- tags:: …` bullet. In a file with YAML front matter, it goes just after the closing `---`.
+- **Placement** — it must sit in the file's *first block*, so Logseq reads it as a page property. In a plain file, that is a bare line at the very top followed by a blank line. When the file already opens with a property block, add it as another bare line of that same block, directly under `tags:: …`. **Page properties must be unbulleted**: Logseq reads only a bare property block at the very top as page properties. A bulleted `- tags:: …` first block is an ordinary block that happens to carry properties — the page gets neither its tags nor `file-created-at`, and page-property queries silently skip it. In a file with YAML front matter, it goes just after the closing `---`.
 - **Value** — the creation date as `YYYY-MM-DD`. When the filename carries a date (`YYYY-MM-DD-topic.md`), use the **earlier** of the filename date and the file's creation timestamp; otherwise use the creation timestamp.
 
 Backfilled across the repo on 2026-09-23.
