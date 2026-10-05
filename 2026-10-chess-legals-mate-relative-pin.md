@@ -1,6 +1,6 @@
 file-created-at:: 2026-10-04
 
-- **Source**: Chess-book page photographed 2026-10-04 — "Part 1: Tactics and Combinations", Diagram 36 ("White to play"). Book title not visible in the photo; it presents the line as "a famous position from Philidor". Better known as **Légal's Mate** (the Légal trap), after Kermur Sire de Légal, Philidor's teacher.
+- **Source**: *Winning Chess Tactics* by Yasser Seirawan (with Jeremy Silman) — Part 1: Tactics and Combinations, Diagram 36 ("White to play"); page photographed 2026-10-04. The book presents the line as "a famous position from Philidor"; it is better known as **Légal's Mate** (the Légal trap), after Kermur Sire de Légal, Philidor's teacher.
 - **One-liner**: A piece pinned to the *queen* (a relative pin) can still move — Black pins the f3-knight, White moves it anyway and offers the queen, and taking the queen walks into mate.
 - ## The moves
 	- **1.e4 e5 2.Nf3 d6 3.Nc3 a6?** (a wasted tempo) **4.Bc4 Bg4??** — Black pins the f3-knight to the queen on d1, assuming it cannot move.
