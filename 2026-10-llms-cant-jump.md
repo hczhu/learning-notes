@@ -6,11 +6,13 @@ file-created-at:: 2026-10-25
 
 - ## Three kinds of reasoning
 
-	- | Mode | What it does | Important limitation |
+	- The paper adopts **Peirce's (1934) Rule–Case–Result framework**: a **Rule** is like a function definition, a **Case** is its input, and a **Result** is its return value. Each mode starts with a different pair and infers the missing element.
+	- | Mode | Inference pattern | Meaning and example |
 	  | --- | --- | --- |
-	  | Induction | Infers patterns or rules from examples. | A good statistical fit need not capture the underlying cause. |
-	  | Deduction | Derives consequences from rules and premises. | Sound inference preserves truth only if the premises are true; it does not validate them empirically. |
-	  | Abduction | Proposes an explanatory hypothesis for an observation. | Generates a candidate explanation, not a guarantee of truth. |
+	  | Deduction | Rule + Case → Result | Applies a known rule to an input; for example, executing code to determine its output. |
+	  | Induction | Case + Result → Rule | Generalizes a rule from observed input–output pairs, gaining support from repeated observations; for example, generating a function that satisfies unit tests. |
+	  | Abduction | Rule + Result → Case | Infers a plausible case that explains an observed result; the paper also includes proposing a new rule to explain a surprising result. |
+	- **Limits**: deduction preserves truth only with true premises and sound inference. Induction remains uncertain beyond the observed cases; passing tests does not prove general correctness or causality. Abduction proposes an explanation that still needs testing—it is not a guaranteed inverse of deduction, since several causes may explain the same result.
 	- The author's discovery cycle: **experience → conceptual jump → axioms → deductions → empirical checking**. His central claim is that today's language-based systems lack the grounding needed for the jump to new physical premises.
 
 - ## What the Einstein example illustrates
