@@ -22,12 +22,32 @@ file-created-at:: 2026-10-25
 	- Turning that intuition into equations required deduction, but also revising assumptions after unsuccessful approaches. Faster theorem proving would not automatically identify which premises to abandon.
 	- **Compression is not the whole story, in the author's view**: optimizing fit or simplicity within an existing representation can favor patching an old theory. Invention may first require new concepts and a larger hypothesis space.
 
+- ## ARC-AGI: a logical jump, not the whole discovery loop
+
+	- **Task described in the paper (§5)**: infer a hidden transformation from sparse examples—typically **2–5 input–output grid pairs**—and apply it to a new input. The solver receives examples, not an explicit rule to execute.
+	- **Why the author calls this abduction**: the solver must propose a plausible explanation that accounts for the examples. This differs from deductively applying a supplied rule; the author argues that such sparse evidence also challenges a purely statistical account of discovery.
+	- **What ARC captures versus misses, in this argument**: it tests explaining supplied observations, but not the preceding step of inventing a physical situation, simulating an intervention, and using the imagined experience to generate new explanatory principles. Einstein's thought experiments combine **simulation to produce an imagined observation** with **abduction to explain it**.
+	- **Related distinction**: generating variations of chess or mathematics problems at test time still operates within established rules. The paper contrasts this with revising the physical axioms themselves, as in Einstein's elevator thought experiment.
+	- **Interpretation limit**: this is the author's account of ARC's relevance, not a benchmark result demonstrating how a model reasons. Sparse examples alone do not rule out learned priors or statistical methods; success on grid tasks does not by itself establish physically grounded scientific invention.
+
 - ## Proposed bridge: think by intervening
 
 	- **Manipulative abduction** means exploring explanatory ideas by manipulating a mental or computational model, rather than only describing observations.
 	- Proposed workflow: **change a simulated situation → inspect its consequences → formulate a principle → derive predictions → test against reality**.
 	- Passive video prediction is insufficient for this proposal. The system should support interventions—such as cutting an elevator cable—and produce physically consistent consequences, not merely plausible-looking scenes.
 	- Physical priors help constrain candidate explanations. The hard step remains translating simulated experience into useful formal axioms; the paper does not demonstrate a system that completes this loop.
+
+- ## Beyond language models: video generation and interactive world models
+
+	- **Grounding problem**: the author uses the “Chinese Room” analogy to distinguish manipulating descriptions of physics from connecting symbols to perceptual experience and action. This is a philosophical framing, not an experimental proof that language models cannot learn physical representations.
+	- | Model or proposed direction | Capability emphasized in the paper | Remaining gap |
+	  | --- | --- | --- |
+	  | Video generators, illustrated by Veo | Produce plausible visual continuations, such as an unsupported apple falling. | The author argues that plausible motion can reflect training correlations; appearance alone does not establish reliable causal physics or intervention capability. |
+	  | Action-controllable world models, illustrated by Genie (Bruce et al., 2024) | Learn an action space through which an agent can influence the generated environment. | Interactivity enables “thinking by doing,” but does not itself establish physical consistency or scientific invention. |
+	  | Proposed future world models | Support counterfactual interventions through a consistent internal representation of physical dynamics, rather than merely plausible pixels. | Turning simulated outcomes into new axioms—and validating those axioms against reality—remains a research proposal. |
+	- **Counterfactual intervention**: watching an elevator fall is different from controlling a simulation to cut its cable and investigate what changes. The proposed synthetic laboratory would let an agent generate observations through interventions, then seek explanations for them.
+	- **Priors direct exploration**: Einstein's physical intuition helped narrow the search for axioms. The author proposes systems with structured expectations that guide which hypotheses and simulations to try, extending the idea beyond physics to pre-symbolic intuitions in other fields. These priors guide inquiry; they are not evidence that a preferred explanation is true.
+	- **Boundary of the claim**: this compares capabilities discussed in the January 2026 paper, not current product versions or mutually exclusive architecture classes. The key distinction is **prediction versus controllable, grounded experimentation**, not simply “LLM versus non-LLM.”
 
 - ## Key takeaways and limits
 
