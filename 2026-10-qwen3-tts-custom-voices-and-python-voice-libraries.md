@@ -1,4 +1,4 @@
-tags:: [[tts]], [[voice-cloning]], [[python]], [[ai-model:Claude Opus 5.5]], [[ai-effort:high]]
+tags:: [[tts]], [[voice-cloning]], [[python]], [[ai-model:Opus5.5]], [[ai-effort:high]]
 file-created-at:: 2026-11-14
 
 - # Qwen3-TTS custom voices, and the Python voice-library landscape
