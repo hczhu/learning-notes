@@ -1,4 +1,4 @@
-tags:: [[interviewing]], [[career]], [[ai-model:Claude Opus 5.5]], [[ai-effort:high]]
+tags:: [[interviewing]], [[career]], [[ai-model:Opus5.5]], [[ai-effort:high]]
 file-created-at:: 2026-11-15
 
 - **Source**: "Why you didn't get the job, even though the interview went well (interviewer perspective)", an anonymous post by someone who regularly sits on hiring panels. The user pasted the text on 2026-11-15; the author, venue, and date weren't provided.
