@@ -1,4 +1,5 @@
 file-created-at:: 2026-07-13
+file-updated-at:: 2026-11-18
 
 # AGENTS.md
 
@@ -28,20 +29,22 @@ YYYY-MM-kebab-case-topic.md
 - Day is normally omitted (month granularity is enough).
 - One topic per file; keep the slug short and descriptive.
 
-## `file-created-at::` Property
+## Required Creation and Update Date Properties
 
-Every `.md` file in this repo carries a Logseq page property recording when it was created:
+Every new `.md` file in this repo must include both Logseq page properties:
 
 ```
 file-created-at:: 2024-06-15
+file-updated-at:: 2024-06-15
 ```
 
-**Add it whenever you create a new `.md` file.**
+**Add both whenever you create a new `.md` file, including instruction files.** These are page properties, not entries in `tags::`.
 
-- **Placement** — it must sit in the file's *first block*, so Logseq reads it as a page property. In a plain file, that is a bare line at the very top followed by a blank line. When the file already opens with a property block, add it as another bare line of that same block, directly under `tags:: …`. **Page properties must be unbulleted**: Logseq reads only a bare property block at the very top as page properties. A bulleted `- tags:: …` first block is an ordinary block that happens to carry properties — the page gets neither its tags nor `file-created-at`, and page-property queries silently skip it. In a file with YAML front matter, it goes just after the closing `---`.
-- **Value** — the creation date as `YYYY-MM-DD`. When the filename carries a date (`YYYY-MM-DD-topic.md`), use the **earlier** of the filename date and the file's creation timestamp; otherwise use the creation timestamp.
+- **Placement** — keep both as bare, unbulleted lines in the file's first page-property block, with `file-updated-at::` directly below `file-created-at::`. If `tags::` exists, put the date properties below it. Follow the block with a blank line. Bulleted properties are block properties, not page properties, and page-property queries will miss them. In a file with YAML front matter, place the property block just after the closing `---`.
+- **Creation date** — use `YYYY-MM-DD`. When the filename carries a date (`YYYY-MM-DD-topic.md`), use the **earlier** of the filename date and the file's creation timestamp; otherwise use the creation timestamp. Preserve this value on subsequent edits.
+- **Update date** — use the current user-local date in `YYYY-MM-DD` when creating or editing the file. For a file created today, both dates are normally identical. When editing an existing file that lacks `file-updated-at::`, add it; do not reset its creation date.
 
-Backfilled across the repo on 2026-09-23.
+Creation dates were backfilled across the repo on 2026-09-23; the update-date requirement was added on 2026-11-18.
 
 ## Logseq Markdown Format
 

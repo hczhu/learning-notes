@@ -1,5 +1,6 @@
 tags:: [[LLM]], [[positional-encoding]], [[RoPE]], [[ai-model:GPT-6 Astra]], [[ai-effort:high]]
 file-created-at:: 2026-11-18
+file-updated-at:: 2026-11-18
 
 - # LLM positional encoding
 - **Source**: User-provided screenshot, Figure 14, “MiniMax-M3 applies RoPE to queries and keys inside attention.” Diagram credited to Sebastian Raschka in the screenshot; original publication URL/date not supplied. Model specifications below reproduce the screenshot, rather than independently verified specifications.
