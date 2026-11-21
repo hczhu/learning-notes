@@ -9,80 +9,86 @@ file-updated-at:: 2026-11-18
 - ## Architecture: where RoPE enters
 	- Read **bottom to top**, matching the screenshot. The two `+` nodes are residual additions. The repeated block represents 60 sequential blocks, not a loop back into the same block.
 	- Q/K and V projection operations are implicit in the original figure; the edge labels below make those paths explicit without drawing separate projection layers. QK-Norm and RoPE apply to the Q/K path, not the V path.
-	- ```mermaid
-	  flowchart BT
-	      input["Input text"] --> tokens["Tokenized text"]
-	      subgraph model["MiniMax-M3 — architecture shown in screenshot"]
-	          direction BT
-	          embed["Token embedding layer<br/>Embedding dimension: 6,144"]
-	          subgraph block["Transformer block × 60"]
-	              direction BT
-	              x["Block input"] --> norm1["RMSNorm 1"]
-	              norm1 -->|"Q and K projections — implicit"| qknorm["QK-Norm"]
-	              qknorm --> rope["RoPE<br/>Positional information enters here"]
-	              rope --> attn["GQA / MiniMax Sparse Attention"]
-	              norm1 -->|"V projection — implicit"| attn
-	              attn --> add1(("+"))
-	              x -->|"Residual connection"| add1
-	              add1 --> norm2["RMSNorm 2"]
-	              norm2 --> ffn["MoE<br/>Dense FFN in first 3 blocks"]
-	              ffn --> add2(("+"))
-	              add1 -->|"Residual connection"| add2
-	          end
-	          embed --> x
-	          add2 --> finalnorm["Final RMSNorm"]
-	          finalnorm --> output["Linear output layer<br/>Vocabulary size: 200k"]
-	      end
-	      tokens --> embed
-	      output --> logits["Output logits"]
-	      context["Screenshot annotation:<br/>supported context length: 1M tokens"] -.-> rope
-	      exception["First 3 blocks:<br/>GQA + dense FFN<br/>FFN hidden size: 12,288<br/>instead of sparse attention + MoE"] -.-> ffn
-	      classDef positional fill:#6d28d9,stroke:#4c1d95,color:#fff,stroke-width:3px;
-	      class rope positional;
-	  ```
-	- **Rendering**: The editable source is a Mermaid fenced code block. GitHub renders Mermaid; Logseq needs a compatible renderer, such as [Diagram Blocks](https://github.com/nanodeath/logseq-diagram-blocks/), to display fenced Mermaid blocks. Without a renderer, the diagram remains readable/editable as source. No plugin is installed by this note.
+	- {{renderer :mermaid_e8c8b7f6-da34-4c57-9757-73b59cb1daab, 3}}
+	  id:: e8c8b7f6-da34-4c57-9757-73b59cb1daab
+		- ```mermaid
+		  %%{init: {"htmlLabels": false, "flowchart": {"htmlLabels": false}}}%%
+		  flowchart BT
+		      input["Input text"] --> tokens["Tokenized text"]
+		      subgraph model["MiniMax-M3 — architecture shown in screenshot"]
+		          direction BT
+		          embed["Token embedding layer<br/>Embedding dimension: 6,144"]
+		          subgraph block["Transformer block × 60"]
+		              direction BT
+		              x["Block input"] --> norm1["RMSNorm 1"]
+		              norm1 -->|"Q and K projections — implicit"| qknorm["QK-Norm"]
+		              qknorm --> rope["RoPE<br/>Positional information enters here"]
+		              rope --> attn["GQA / MiniMax Sparse Attention"]
+		              norm1 -->|"V projection — implicit"| attn
+		              attn --> add1(("+"))
+		              x -->|"Residual connection"| add1
+		              add1 --> norm2["RMSNorm 2"]
+		              norm2 --> ffn["MoE<br/>Dense FFN in first 3 blocks"]
+		              ffn --> add2(("+"))
+		              add1 -->|"Residual connection"| add2
+		          end
+		          embed --> x
+		          add2 --> finalnorm["Final RMSNorm"]
+		          finalnorm --> output["Linear output layer<br/>Vocabulary size: 200k"]
+		      end
+		      tokens --> embed
+		      output --> logits["Output logits"]
+		      context["Screenshot annotation:<br/>supported context length: 1M tokens"] -.-> rope
+		      exception["First 3 blocks:<br/>GQA + dense FFN<br/>FFN hidden size: 12,288<br/>instead of sparse attention + MoE"] -.-> ffn
+		      classDef positional fill:#6d28d9,stroke:#4c1d95,color:#fff,stroke-width:3px;
+		      class rope positional;
+		  ```
+	- **Rendering**: Compatible with [benjypng/logseq-mermaid-plugin v2.2.3](https://github.com/benjypng/logseq-mermaid-plugin). Each renderer macro has its Mermaid code as its first child block; keep that nesting when editing. The initialization directive disables HTML labels so the plugin can convert SVG to PNG. The `<br/>` separators become SVG text line breaks, not HTML labels. GitHub renders the nested Mermaid source; the Logseq renderer macro and block ID remain visible there as metadata.
 
 - ## RoPE close-up: from one token to an attention score
 	- **Source**: Three additional user-provided screenshots, Figures 15–17, credited to Sebastian Raschka: projection and head reshaping, pairwise rotations, and the first split-half pair. This is a **toy example** with 16 hidden features and two 8-feature heads, not the MiniMax-M3 dimensions above.
 	- Read **top to bottom**. Position `t` is a placeholder: use `t = m` for the query token and `t = n` for the key token. At any one position, both projections receive the same hidden state. The shared pairing/rotation boxes describe a rule applied **independently** to each Q/K head; they do not merge queries and keys.
-	- ```mermaid
-	  flowchart TD
-	      token["Token at position t<br/>Example: fox at t = m"] --> lookup["Embedding lookup"]
-	      lookup --> embedding["Token embedding: 16 features"]
-	      embedding --> earlier["Earlier transformer blocks, if any<br/>Typically preserve hidden-state width"]
-	      earlier --> hidden["Hidden state h_t: 16 features<br/>Same input to Q and K projections"]
-	      hidden --> wq["Learned query weights W_Q<br/>16 × 16"]
-	      hidden --> wk["Learned key weights W_K<br/>16 × 16"]
-	      wq --> q["Query vector q_t<br/>Shape: 16"]
-	      wk --> k["Key vector k_t<br/>Shape: 16"]
-	      q --> qheads["Reshape to 2 × 8<br/>Q head 0: slots 1–8<br/>Q head 1: slots 9–16"]
-	      k --> kheads["Reshape to 2 × 8<br/>K head 0: slots 1–8<br/>K head 1: slots 9–16"]
-	      qheads -->|"Each head independently"| halves
-	      kheads -->|"Each head independently"| halves
-	      subgraph pairing["Split-half pairing — zoom into head 0"]
-	          halves["8-feature head<br/>First half: a0, a1, a2, a3 — slots 1–4<br/>Second half: b0, b1, b2, b3 — slots 5–8"]
-	          halves --> p0["Pair 0: (a0, b0)<br/>Slots (1, 5) — one from each half"]
-	          halves --> p1["Pair 1: (a1, b1)<br/>Slots (2, 6)"]
-	          halves --> p2["Pair 2: (a2, b2)<br/>Slots (3, 7)"]
-	          halves --> p3["Pair 3: (a3, b3)<br/>Slots (4, 8)"]
-	      end
-	      p0 --> rotate
-	      p1 --> rotate
-	      p2 --> rotate
-	      p3 --> rotate
-	      position["Token position t"] --> angle["Angle for pair i: φ_i = t θ_i<br/>Highlighted pair 0 at m: φ_0 = m θ_0"]
-	      frequency["Pair frequency θ_i"] --> angle
-	      angle --> rotate["Rotate each pair independently<br/>a_i′ = a_i cos φ_i − b_i sin φ_i<br/>b_i′ = a_i sin φ_i + b_i cos φ_i"]
-	      rotate --> slots["Write rotated values into their original slots<br/>a0′, a1′, a2′, a3′, b0′, b1′, b2′, b3′<br/>Still 8 features per head"]
-	      slots -->|"Query branch at t = m"| qr["Rotated query q_m′"]
-	      slots -->|"Key branch at t = n"| kr["Rotated key k_n′"]
-	      qr --> score["Dot product within a head<br/>q_m′ · k_n′<br/>Unscaled attention score"]
-	      kr --> score
-	      classDef firstPair fill:#cffafe,stroke:#b91c1c,color:#164e63,stroke-width:3px;
-	      classDef rotation fill:#ede9fe,stroke:#7c3aed,color:#4c1d95;
-	      class p0 firstPair;
-	      class angle,rotate rotation;
-	  ```
+	- {{renderer :mermaid_03e10b25-5418-43e6-a446-9aba8d4d9238, 3}}
+	  id:: 03e10b25-5418-43e6-a446-9aba8d4d9238
+		- ```mermaid
+		  %%{init: {"htmlLabels": false, "flowchart": {"htmlLabels": false}}}%%
+		  flowchart TD
+		      token["Token at position t<br/>Example: fox at t = m"] --> lookup["Embedding lookup"]
+		      lookup --> embedding["Token embedding: 16 features"]
+		      embedding --> earlier["Earlier transformer blocks, if any<br/>Typically preserve hidden-state width"]
+		      earlier --> hidden["Hidden state h_t: 16 features<br/>Same input to Q and K projections"]
+		      hidden --> wq["Learned query weights W_Q<br/>16 × 16"]
+		      hidden --> wk["Learned key weights W_K<br/>16 × 16"]
+		      wq --> q["Query vector q_t<br/>Shape: 16"]
+		      wk --> k["Key vector k_t<br/>Shape: 16"]
+		      q --> qheads["Reshape to 2 × 8<br/>Q head 0: slots 1–8<br/>Q head 1: slots 9–16"]
+		      k --> kheads["Reshape to 2 × 8<br/>K head 0: slots 1–8<br/>K head 1: slots 9–16"]
+		      qheads -->|"Each head independently"| halves
+		      kheads -->|"Each head independently"| halves
+		      subgraph pairing["Split-half pairing — zoom into head 0"]
+		          halves["8-feature head<br/>First half: a0, a1, a2, a3 — slots 1–4<br/>Second half: b0, b1, b2, b3 — slots 5–8"]
+		          halves --> p0["Pair 0: (a0, b0)<br/>Slots (1, 5) — one from each half"]
+		          halves --> p1["Pair 1: (a1, b1)<br/>Slots (2, 6)"]
+		          halves --> p2["Pair 2: (a2, b2)<br/>Slots (3, 7)"]
+		          halves --> p3["Pair 3: (a3, b3)<br/>Slots (4, 8)"]
+		      end
+		      p0 --> rotate
+		      p1 --> rotate
+		      p2 --> rotate
+		      p3 --> rotate
+		      position["Token position t"] --> angle["Angle for pair i: φ_i = t θ_i<br/>Highlighted pair 0 at m: φ_0 = m θ_0"]
+		      frequency["Pair frequency θ_i"] --> angle
+		      angle --> rotate["Rotate each pair independently<br/>a_i′ = a_i cos φ_i − b_i sin φ_i<br/>b_i′ = a_i sin φ_i + b_i cos φ_i"]
+		      rotate --> slots["Write rotated values into their original slots<br/>a0′, a1′, a2′, a3′, b0′, b1′, b2′, b3′<br/>Still 8 features per head"]
+		      slots -->|"Query branch at t = m"| qr["Rotated query q_m′"]
+		      slots -->|"Key branch at t = n"| kr["Rotated key k_n′"]
+		      qr --> score["Dot product within a head<br/>q_m′ · k_n′<br/>Unscaled attention score"]
+		      kr --> score
+		      classDef firstPair fill:#cffafe,stroke:#b91c1c,color:#164e63,stroke-width:3px;
+		      classDef rotation fill:#ede9fe,stroke:#7c3aed,color:#4c1d95;
+		      class p0 firstPair;
+		      class angle,rotate rotation;
+		  ```
 	- **Reshaping is not a learned transformation**: the projections change the values; reshaping only organizes each 16-feature result into two heads. Slot numbers identify coordinates, not numerical feature values.
 	- **Pair across halves, then restore the layout**: `(1, 5)`, `(2, 6)`, `(3, 7)`, `(4, 8)` is the convention in these screenshots—not adjacent-slot pairing. Apply the same local pairing separately to every query/key head at every position.
 	- **Different positions, same rotation rule**: query pair `i` rotates by `m θ_i`; key pair `i` rotates by `n θ_i`. Their rotated vectors feed the dot product. This diagram stops at the unscaled score; it does not show attention scaling, masking, softmax, or value aggregation.
